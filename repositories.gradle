@@ -2,12 +2,20 @@
 
 repositories {
     maven {
-        url = "https://repo.openmods.info/artifactory/openmods/"
+        name 'GTNH Maven'
+        url 'http://jenkins.usrv.eu:8081/nexus/content/groups/public/'
+        allowInsecureProtocol
     }
     maven {
-        url "https://cursemaven.com"
+        url 'https://repo.openmods.info/artifactory/openmods/'
     }
     maven {
-        url = "https://jitpack.io"
+        url 'https://cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
+    }
+    maven {
+        url = 'https://jitpack.io'
     }
 }
