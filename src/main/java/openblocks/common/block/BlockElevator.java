@@ -2,7 +2,6 @@ package openblocks.common.block;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import java.util.Set;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -10,11 +9,14 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import openblocks.api.IElevatorBlock;
+import openmods.geometry.Orientation;
 import openmods.infobook.BookDocumentation;
 import openmods.utils.BlockNotifyFlags;
 import openmods.utils.CollectionUtils;
 import openmods.utils.ColorUtils;
 import openmods.utils.ColorUtils.ColorMeta;
+
+import java.util.Set;
 
 @BookDocumentation(hasVideo = true)
 public class BlockElevator extends OpenBlock implements IElevatorBlock {
@@ -74,4 +76,8 @@ public class BlockElevator extends OpenBlock implements IElevatorBlock {
 		return PlayerRotation.NONE;
 	}
 
+	@Override
+	public void afterBlockPlaced(World world, EntityPlayer player, ItemStack stack, int x, int y, int z, ForgeDirection side, Orientation blockOrientation, float hitX, float hitY, float hitZ, int itemMeta) {
+		// Do not call superclass, it overwrites color metadata with rotation mode
+	}
 }
