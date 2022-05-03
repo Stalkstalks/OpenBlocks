@@ -1,4 +1,4 @@
-//version: 1644612407
+//version: 1650343995
 /*
 DO NOT CHANGE THIS FILE!
 
@@ -6,12 +6,11 @@ Also, you may replace this file at any time if there is an update available.
 Please check https://github.com/GTNewHorizons/ExampleMod1.7.10/blob/main/build.gradle for updates.
 */
 
-import org.gradle.internal.logging.text.StyledTextOutput
-import org.gradle.internal.logging.text.StyledTextOutputFactory
-import org.gradle.internal.logging.text.StyledTextOutput.Style
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.internal.logging.text.StyledTextOutput.Style
+import org.gradle.internal.logging.text.StyledTextOutputFactory
 
 import java.util.concurrent.TimeUnit
 
@@ -104,6 +103,7 @@ checkPropertyExists("usesShadowedDependencies")
 checkPropertyExists("developmentEnvironmentUserName")
 
 boolean noPublishedSources = project.findProperty("noPublishedSources") ? project.noPublishedSources.toBoolean() : false
+boolean usesMixinDebug = project.findProperty('usesMixinDebug') ?: project.usesMixins.toBoolean()
 
 String javaSourceDir = "src/main/java/"
 String scalaSourceDir = "src/main/scala/"
@@ -214,13 +214,17 @@ else {
 def arguments = []
 def jvmArguments = []
 
-if(usesMixins.toBoolean()) {
+if (usesMixins.toBoolean()) {
     arguments += [
-            "--tweakClass org.spongepowered.asm.launch.MixinTweaker"
+        "--tweakClass org.spongepowered.asm.launch.MixinTweaker"
     ]
-    jvmArguments += [
-            "-Dmixin.debug.countInjections=true", "-Dmixin.debug.verbose=true", "-Dmixin.debug.export=true"
-    ]
+    if (usesMixinDebug.toBoolean()) {
+        jvmArguments += [
+            "-Dmixin.debug.countInjections=true",
+            "-Dmixin.debug.verbose=true",
+            "-Dmixin.debug.export=true"
+        ]
+    }
 }
 
 minecraft {
@@ -312,18 +316,23 @@ def refMap = "${tasks.compileJava.temporaryDir}" + File.separator + mixingConfig
 def mixinSrg = "${tasks.reobf.temporaryDir}" + File.separator + "mixins.srg"
 
 task generateAssets {
-    if(usesMixins.toBoolean()) {
-        getFile("/src/main/resources/mixins." + modId + ".json").text = """{
+    if (usesMixins.toBoolean()) {
+        def mixinConfigFile = getFile("/src/main/resources/mixins." + modId + ".json");
+        if (!mixinConfigFile.exists()) {
+            mixinConfigFile.text = """{
   "required": true,
   "minVersion": "0.7.11",
   "package": "${modGroup}.${mixinsPackage}",
   "plugin": "${modGroup}.${mixinPlugin}",
   "refmap": "${mixingConfigRefMap}",
   "target": "@env(DEFAULT)",
-  "compatibilityLevel": "JAVA_8"
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [],
+  "client": [],
+  "server": []
 }
-
 """
+        }
     }
 }
 
@@ -462,7 +471,7 @@ def getManifestAttributes() {
 }
 
 task sourcesJar(type: Jar) {
-    from (sourceSets.main.allJava)
+    from (sourceSets.main.allSource)
     from (file("$projectDir/LICENSE"))
     getArchiveClassifier().set('sources')
 }
@@ -517,7 +526,7 @@ task devJar(type: Jar) {
 }
 
 task apiJar(type: Jar) {
-    from (sourceSets.main.allJava) {
+    from (sourceSets.main.allSource) {
         include modGroup.toString().replaceAll("\\.", "/") + "/" + apiPackage.toString().replaceAll("\\.", "/") + '/**'
     }
 
@@ -548,6 +557,9 @@ tasks.withType(GenerateModuleMetadata) {
     enabled = false
 }
 
+// workaround variable hiding in pom processing
+def projectConfigs = project.configurations
+
 publishing {
     publications {
         maven(MavenPublication) {
@@ -556,7 +568,7 @@ publishing {
                 artifact source: shadowJar, classifier: ""
             }
             if(!noPublishedSources) {
-                artifact source: sourcesJar, classifier: "src"
+                artifact source: sourcesJar, classifier: "sources"
             }
             artifact source: usesShadowedDependencies.toBoolean() ? shadowDevJar : devJar, classifier: "dev"
             if (apiPackage) {
@@ -568,16 +580,20 @@ publishing {
             // Using the identified version, not project.version as it has the prepended 1.7.10
             version = System.getenv("RELEASE_VERSION") ?: identifiedVersion
 
-            // remove extra garbage from who knows where
+            // remove extra garbage from minecraft and minecraftDeps configuration
             pom.withXml {
-                def badPomGroup = ['net.minecraft', 'com.google.code.findbugs', 'org.ow2.asm', 'com.typesafe.akka', 'com.typesafe', 'org.scala-lang',
-                                   'org.scala-lang.plugins', 'net.sf.jopt-simple', 'lzma', 'com.mojang', 'org.apache.commons', 'org.apache.httpcomponents',
-                                   'commons-logging', 'java3d', 'net.sf.trove4j', 'com.ibm.icu', 'com.paulscode', 'io.netty', 'com.google.guava',
-                                   'commons-io', 'commons-codec', 'net.java.jinput', 'net.java.jutils', 'com.google.code.gson', 'org.apache.logging.log4j',
-                                   'org.lwjgl.lwjgl', 'tv.twitch', 'org.jetbrains.kotlin', '']
+                def badArtifacts = [:].withDefault {[] as Set<String>}
+                for (configuration in [projectConfigs.minecraft, projectConfigs.minecraftDeps]) {
+                    for (dependency in configuration.allDependencies) {
+                        badArtifacts[dependency.group == null ? "" : dependency.group] += dependency.name
+                    }
+                }
+                // example for specifying extra stuff to ignore
+                // badArtifacts["org.example.group"] += "artifactName"
+
                 Node pomNode = asNode()
                 pomNode.dependencies.'*'.findAll() {
-                    badPomGroup.contains(it.groupId.text())
+                    badArtifacts[it.groupId.text()].contains(it.artifactId.text())
                 }.each() {
                     it.parent().remove(it)
                 }
