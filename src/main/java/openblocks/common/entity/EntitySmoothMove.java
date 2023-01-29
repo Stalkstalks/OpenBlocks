@@ -1,98 +1,100 @@
 package openblocks.common.entity;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+
 public abstract class EntitySmoothMove extends Entity {
 
-	public class MoveSmoother {
-		private final double damp;
-		private final double cutoff;
-		private final double panicLengthSq;
-		private final double minimalLengthSq;
+    public class MoveSmoother {
 
-		private double targetX;
-		private double targetY;
-		private double targetZ;
+        private final double damp;
+        private final double cutoff;
+        private final double panicLengthSq;
+        private final double minimalLengthSq;
 
-		public MoveSmoother(double damp, double cutoff, double panicLength, double minimalLength) {
-			this.damp = damp;
-			this.cutoff = cutoff;
-			this.panicLengthSq = panicLength * panicLength;
-			this.minimalLengthSq = minimalLength * minimalLength;
-		}
+        private double targetX;
+        private double targetY;
+        private double targetZ;
 
-		public void setTarget(Vec3 position) {
-			setTarget(position.xCoord, position.yCoord, position.zCoord);
-		}
+        public MoveSmoother(double damp, double cutoff, double panicLength, double minimalLength) {
+            this.damp = damp;
+            this.cutoff = cutoff;
+            this.panicLengthSq = panicLength * panicLength;
+            this.minimalLengthSq = minimalLength * minimalLength;
+        }
 
-		public void setTarget(double targetX, double targetY, double targetZ) {
-			this.targetX = targetX;
-			this.targetY = targetY;
-			this.targetZ = targetZ;
-		}
+        public void setTarget(Vec3 position) {
+            setTarget(position.xCoord, position.yCoord, position.zCoord);
+        }
 
-		public void update() {
-			double dx = targetX - posX;
-			double dy = targetY - posY;
-			double dz = targetZ - posZ;
+        public void setTarget(double targetX, double targetY, double targetZ) {
+            this.targetX = targetX;
+            this.targetY = targetY;
+            this.targetZ = targetZ;
+        }
 
-			double lenSq = dx * dx + dy * dy + dz * dz;
-			if (lenSq > panicLengthSq || lenSq < minimalLengthSq) {
-				setPosition(targetX, targetY, targetZ);
-				motionX = motionY = motionZ = 0;
-			} else {
-				if (lenSq > cutoff * cutoff) {
-					double scale = cutoff / Math.sqrt(lenSq);
-					dx *= scale;
-					dy *= scale;
-					dz *= scale;
-				}
-				moveEntity(motionX + dx * damp, motionY + dy * damp, motionZ + dz * damp);
-			}
-		}
-	}
+        public void update() {
+            double dx = targetX - posX;
+            double dy = targetY - posY;
+            double dz = targetZ - posZ;
 
-	protected final MoveSmoother smoother;
+            double lenSq = dx * dx + dy * dy + dz * dz;
+            if (lenSq > panicLengthSq || lenSq < minimalLengthSq) {
+                setPosition(targetX, targetY, targetZ);
+                motionX = motionY = motionZ = 0;
+            } else {
+                if (lenSq > cutoff * cutoff) {
+                    double scale = cutoff / Math.sqrt(lenSq);
+                    dx *= scale;
+                    dy *= scale;
+                    dz *= scale;
+                }
+                moveEntity(motionX + dx * damp, motionY + dy * damp, motionZ + dz * damp);
+            }
+        }
+    }
 
-	public EntitySmoothMove(World world) {
-		super(world);
+    protected final MoveSmoother smoother;
 
-		smoother = createSmoother(world.isRemote);
-	}
+    public EntitySmoothMove(World world) {
+        super(world);
 
-	protected MoveSmoother createSmoother(boolean isRemote) {
-		return isRemote? new MoveSmoother(0.25, 1.0, 8.0, 0.01) : new MoveSmoother(0.5, 5.0, 128.0, 0.01);
-	}
+        smoother = createSmoother(world.isRemote);
+    }
 
-	@Override
-	public void setPosition(double x, double y, double z) {
-		if (smoother != null) smoother.setTarget(x, y, z);
-		super.setPosition(x, y, z);
-	}
+    protected MoveSmoother createSmoother(boolean isRemote) {
+        return isRemote ? new MoveSmoother(0.25, 1.0, 8.0, 0.01) : new MoveSmoother(0.5, 5.0, 128.0, 0.01);
+    }
 
-	@Override
-	public void setPositionAndRotation(double x, double y, double z, float yaw, float pitch) {
-		smoother.setTarget(x, y, z);
-		super.setPositionAndRotation(x, y, z, yaw, pitch);
-	}
+    @Override
+    public void setPosition(double x, double y, double z) {
+        if (smoother != null) smoother.setTarget(x, y, z);
+        super.setPosition(x, y, z);
+    }
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void setPositionAndRotation2(double x, double y, double z, float yaw, float pitch, int something) {
-		smoother.setTarget(x, y, z);
-		super.setRotation(yaw, pitch);
-	}
+    @Override
+    public void setPositionAndRotation(double x, double y, double z, float yaw, float pitch) {
+        smoother.setTarget(x, y, z);
+        super.setPositionAndRotation(x, y, z, yaw, pitch);
+    }
 
-	protected void updatePrevPosition() {
-		prevDistanceWalkedModified = distanceWalkedModified;
-		prevPosX = posX;
-		prevPosY = posY;
-		prevPosZ = posZ;
-		prevRotationPitch = this.rotationPitch;
-		prevRotationYaw = this.rotationYaw;
-	}
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void setPositionAndRotation2(double x, double y, double z, float yaw, float pitch, int something) {
+        smoother.setTarget(x, y, z);
+        super.setRotation(yaw, pitch);
+    }
+
+    protected void updatePrevPosition() {
+        prevDistanceWalkedModified = distanceWalkedModified;
+        prevPosX = posX;
+        prevPosY = posY;
+        prevPosZ = posZ;
+        prevRotationPitch = this.rotationPitch;
+        prevRotationYaw = this.rotationYaw;
+    }
 }

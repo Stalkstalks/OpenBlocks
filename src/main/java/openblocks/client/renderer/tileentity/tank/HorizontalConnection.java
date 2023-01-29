@@ -5,32 +5,33 @@ import net.minecraftforge.fluids.FluidStack;
 
 public class HorizontalConnection extends GridConnection {
 
-	private FluidStack fluidA;
+    private FluidStack fluidA;
 
-	private FluidStack fluidB;
+    private FluidStack fluidB;
 
-	private boolean isConnected;
+    private boolean isConnected;
 
-	public HorizontalConnection(DoubledCoords coords) {
-		super(coords);
-	}
+    public HorizontalConnection(DoubledCoords coords) {
+        super(coords);
+    }
 
-	@Override
-	public boolean isConnected() {
-		return isConnected;
-	}
+    @Override
+    public boolean isConnected() {
+        return isConnected;
+    }
 
-	public void updateFluid(ForgeDirection direction, FluidStack stack) {
-		if (direction == ForgeDirection.NORTH || direction == ForgeDirection.WEST) this.fluidA = TankRenderUtils.safeCopy(stack);
-		else this.fluidB = TankRenderUtils.safeCopy(stack);
+    public void updateFluid(ForgeDirection direction, FluidStack stack) {
+        if (direction == ForgeDirection.NORTH || direction == ForgeDirection.WEST)
+            this.fluidA = TankRenderUtils.safeCopy(stack);
+        else this.fluidB = TankRenderUtils.safeCopy(stack);
 
-		this.isConnected = fluidA != null && fluidB != null && fluidA.isFluidEqual(fluidB);
-	}
+        this.isConnected = fluidA != null && fluidB != null && fluidA.isFluidEqual(fluidB);
+    }
 
-	public void clearFluid(ForgeDirection direction) {
-		if (direction == ForgeDirection.NORTH || direction == ForgeDirection.WEST) this.fluidA = null;
-		else this.fluidB = null;
+    public void clearFluid(ForgeDirection direction) {
+        if (direction == ForgeDirection.NORTH || direction == ForgeDirection.WEST) this.fluidA = null;
+        else this.fluidB = null;
 
-		this.isConnected = false;
-	}
+        this.isConnected = false;
+    }
 }

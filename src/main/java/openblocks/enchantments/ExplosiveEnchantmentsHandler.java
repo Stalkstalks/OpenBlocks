@@ -1,13 +1,10 @@
 package openblocks.enchantments;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.MapMaker;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.enchantment.EnchantmentHelper;
@@ -23,187 +20,194 @@ import net.minecraft.util.EntityDamageSource;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingEvent.LivingJumpEvent;
 import net.minecraftforge.event.entity.living.LivingFallEvent;
+
 import openblocks.Config;
 import openblocks.OpenBlocks.Enchantments;
 import openmods.OpenMods;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.MapMaker;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+
 public class ExplosiveEnchantmentsHandler {
 
-	public static final int ARMOR_HELMET = 3;
-	public static final int ARMOR_CHESTPIECE = 2;
-	public static final int ARMOR_PANTS = 1;
-	public static final int ARMOR_BOOTS = 0;
+    public static final int ARMOR_HELMET = 3;
+    public static final int ARMOR_CHESTPIECE = 2;
+    public static final int ARMOR_PANTS = 1;
+    public static final int ARMOR_BOOTS = 0;
 
-	private final List<Integer> protectionParts = Lists.newArrayList(ARMOR_CHESTPIECE, ARMOR_HELMET, ARMOR_PANTS);
+    private final List<Integer> protectionParts = Lists.newArrayList(ARMOR_CHESTPIECE, ARMOR_HELMET, ARMOR_PANTS);
 
-	private static final double VERTICAL_FACTOR = 5;
+    private static final double VERTICAL_FACTOR = 5;
 
-	private static final Set<String> ALLOWED_DAMAGE_SOURCE = ImmutableSet.of("arrow", "player", "mob");
+    private static final Set<String> ALLOWED_DAMAGE_SOURCE = ImmutableSet.of("arrow", "player", "mob");
 
-	private static class EnchantmentLevel {
-		public final double multiplier;
-		public final double maxHeightBonus;
-		public final float jumpExplosionPower;
-		public final float armorExplosionPower;
-		public final boolean isDestructive;
-		public final int gunpowderNeeded;
+    private static class EnchantmentLevel {
 
-		private EnchantmentLevel(double multiplier, double maxHeightBonus, float jumpExplosionPower, float armorExplosionPower, boolean isDestructive, int gunpowderNeeded) {
-			this.multiplier = multiplier;
-			this.maxHeightBonus = maxHeightBonus;
-			this.jumpExplosionPower = jumpExplosionPower;
-			this.armorExplosionPower = armorExplosionPower;
-			this.isDestructive = isDestructive;
-			this.gunpowderNeeded = gunpowderNeeded;
-		}
+        public final double multiplier;
+        public final double maxHeightBonus;
+        public final float jumpExplosionPower;
+        public final float armorExplosionPower;
+        public final boolean isDestructive;
+        public final int gunpowderNeeded;
 
-		protected double calculateHeightBonus(float height) {
-			return Math.min(Math.sqrt(height), maxHeightBonus);
-		}
+        private EnchantmentLevel(double multiplier, double maxHeightBonus, float jumpExplosionPower,
+                float armorExplosionPower, boolean isDestructive, int gunpowderNeeded) {
+            this.multiplier = multiplier;
+            this.maxHeightBonus = maxHeightBonus;
+            this.jumpExplosionPower = jumpExplosionPower;
+            this.armorExplosionPower = armorExplosionPower;
+            this.isDestructive = isDestructive;
+            this.gunpowderNeeded = gunpowderNeeded;
+        }
 
-		public double calculateMultipler(float height) {
-			return multiplier + calculateHeightBonus(height);
-		}
+        protected double calculateHeightBonus(float height) {
+            return Math.min(Math.sqrt(height), maxHeightBonus);
+        }
 
-		public void createJumpExplosion(Entity entity) {
-			createExplosionForEntity(entity, jumpExplosionPower, isDestructive);
-		}
+        public double calculateMultipler(float height) {
+            return multiplier + calculateHeightBonus(height);
+        }
 
-		public void createArmorExplosion(Entity entity) {
-			createExplosionForEntity(entity, armorExplosionPower, isDestructive);
-		}
-	}
+        public void createJumpExplosion(Entity entity) {
+            createExplosionForEntity(entity, jumpExplosionPower, isDestructive);
+        }
 
-	private final static EnchantmentLevel LEVELS[] = new EnchantmentLevel[] {
-			null, // 1-based
-			new EnchantmentLevel(0.10, 5, 5, 1, false, 1),
-			new EnchantmentLevel(0.75, 7.5, 10, 2, false, 2),
-			new EnchantmentLevel(1.00, 10, 5, 4, Config.explosiveEnchantGrief, 4)
-	};
+        public void createArmorExplosion(Entity entity) {
+            createExplosionForEntity(entity, armorExplosionPower, isDestructive);
+        }
+    }
 
-	private static class JumpInfo {
-		public final EnchantmentLevel level;
-		public final float height;
+    private final static EnchantmentLevel LEVELS[] = new EnchantmentLevel[] { null, // 1-based
+            new EnchantmentLevel(0.10, 5, 5, 1, false, 1), new EnchantmentLevel(0.75, 7.5, 10, 2, false, 2),
+            new EnchantmentLevel(1.00, 10, 5, 4, Config.explosiveEnchantGrief, 4) };
 
-		private JumpInfo(EnchantmentLevel level, float height) {
-			this.level = level;
-			this.height = height;
-		}
+    private static class JumpInfo {
 
-		public void modifyVelocity(Entity entity) {
-			double multiplier = level.calculateMultipler(height);
+        public final EnchantmentLevel level;
+        public final float height;
 
-			entity.motionX *= multiplier * VERTICAL_FACTOR;
-			entity.motionZ *= multiplier * VERTICAL_FACTOR;
-			entity.motionY *= multiplier;
-		}
-	}
+        private JumpInfo(EnchantmentLevel level, float height) {
+            this.level = level;
+            this.height = height;
+        }
 
-	public static void createExplosionForEntity(Entity entity, float power, boolean isDestructive) {
-		if (!entity.worldObj.isRemote) {
-			entity.worldObj.createExplosion(entity, entity.posX, entity.boundingBox.minY, entity.posZ, power, isDestructive);
-		}
-	}
+        public void modifyVelocity(Entity entity) {
+            double multiplier = level.calculateMultipler(height);
 
-	private Map<Entity, JumpInfo> jumpBoosts = new MapMaker().weakKeys().makeMap();
+            entity.motionX *= multiplier * VERTICAL_FACTOR;
+            entity.motionZ *= multiplier * VERTICAL_FACTOR;
+            entity.motionY *= multiplier;
+        }
+    }
 
-	private static final ItemStack gunpowder = new ItemStack(Items.gunpowder);
+    public static void createExplosionForEntity(Entity entity, float power, boolean isDestructive) {
+        if (!entity.worldObj.isRemote) {
+            entity.worldObj
+                    .createExplosion(entity, entity.posX, entity.boundingBox.minY, entity.posZ, power, isDestructive);
+        }
+    }
 
-	private static void useItems(EntityPlayer player, int gunpowderSlot, int armorSlot, int gunpowderAmout) {
-		if (player.capabilities.isCreativeMode) return;
+    private Map<Entity, JumpInfo> jumpBoosts = new MapMaker().weakKeys().makeMap();
 
-		final InventoryPlayer inventory = player.inventory;
+    private static final ItemStack gunpowder = new ItemStack(Items.gunpowder);
 
-		ItemStack armor = inventory.armorItemInSlot(armorSlot);
-		armor.damageItem(1, player);
-		if (armor.stackSize <= 0) inventory.armorInventory[armorSlot] = null;
+    private static void useItems(EntityPlayer player, int gunpowderSlot, int armorSlot, int gunpowderAmout) {
+        if (player.capabilities.isCreativeMode) return;
 
-		ItemStack resource = inventory.mainInventory[gunpowderSlot];
-		resource.stackSize -= gunpowderAmout;
-		if (resource.stackSize <= 0) inventory.mainInventory[gunpowderSlot] = null;
-	}
+        final InventoryPlayer inventory = player.inventory;
 
-	private static EnchantmentLevel tryUseEnchantment(EntityPlayer player, int armorSlot) {
-		final InventoryPlayer inventory = player.inventory;
+        ItemStack armor = inventory.armorItemInSlot(armorSlot);
+        armor.damageItem(1, player);
+        if (armor.stackSize <= 0) inventory.armorInventory[armorSlot] = null;
 
-		ItemStack armor = inventory.armorInventory[armorSlot];
-		if (armor == null || !(armor.getItem() instanceof ItemArmor)) return null;
-		@SuppressWarnings("unchecked")
-		Map<Integer, Integer> enchantments = EnchantmentHelper.getEnchantments(armor);
-		Integer ench = enchantments.get(Enchantments.explosive.effectId);
-		if (ench == null || ench >= LEVELS.length) return null;
-		EnchantmentLevel level = LEVELS[ench];
-		if (level == null) return null;
+        ItemStack resource = inventory.mainInventory[gunpowderSlot];
+        resource.stackSize -= gunpowderAmout;
+        if (resource.stackSize <= 0) inventory.mainInventory[gunpowderSlot] = null;
+    }
 
-		for (int i = 0; i < inventory.mainInventory.length; i++) {
-			ItemStack stack = inventory.mainInventory[i];
-			if (stack != null && gunpowder.isItemEqual(stack) && stack.stackSize >= level.gunpowderNeeded) {
-				useItems(player, i, armorSlot, level.gunpowderNeeded);
-				return level;
-			}
-		}
+    private static EnchantmentLevel tryUseEnchantment(EntityPlayer player, int armorSlot) {
+        final InventoryPlayer inventory = player.inventory;
 
-		return null;
-	}
+        ItemStack armor = inventory.armorInventory[armorSlot];
+        if (armor == null || !(armor.getItem() instanceof ItemArmor)) return null;
+        @SuppressWarnings("unchecked")
+        Map<Integer, Integer> enchantments = EnchantmentHelper.getEnchantments(armor);
+        Integer ench = enchantments.get(Enchantments.explosive.effectId);
+        if (ench == null || ench >= LEVELS.length) return null;
+        EnchantmentLevel level = LEVELS[ench];
+        if (level == null) return null;
 
-	private EnchantmentLevel tryUseUpperArmor(EntityPlayer player) {
-		Collections.shuffle(protectionParts);
-		for (int armorPart : protectionParts) {
-			EnchantmentLevel result = tryUseEnchantment(player, armorPart);
-			if (result != null) return result;
-		}
+        for (int i = 0; i < inventory.mainInventory.length; i++) {
+            ItemStack stack = inventory.mainInventory[i];
+            if (stack != null && gunpowder.isItemEqual(stack) && stack.stackSize >= level.gunpowderNeeded) {
+                useItems(player, i, armorSlot, level.gunpowderNeeded);
+                return level;
+            }
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	@SubscribeEvent
-	public void onFall(LivingFallEvent evt) {
-		final Entity e = evt.entityLiving;
-		if (evt.distance > 4 && !e.isSneaking() && e instanceof EntityPlayer) {
-			EntityPlayer player = (EntityPlayer)e;
+    private EnchantmentLevel tryUseUpperArmor(EntityPlayer player) {
+        Collections.shuffle(protectionParts);
+        for (int armorPart : protectionParts) {
+            EnchantmentLevel result = tryUseEnchantment(player, armorPart);
+            if (result != null) return result;
+        }
 
-			EnchantmentLevel level = tryUseEnchantment(player, ARMOR_BOOTS);
-			if (level == null) return;
-			JumpInfo boost = new JumpInfo(level, evt.distance);
-			level.createJumpExplosion(player);
-			if (OpenMods.proxy.isClientPlayer(player)) {
-				// And Now, Ladies and Gentlemen!
-				// Logic Defying...
-				// Loved By Everyone...
-				// Possibly Buggy
-				// TEEERRRRRIIIIBLE HAAAAAACK!
-				KeyBinding.setKeyBindState(Minecraft.getMinecraft().gameSettings.keyBindJump.getKeyCode(), true);
-				// no, seriously, can't find better way to make jump
-				jumpBoosts.put(player, boost);
-			}
-			evt.setCanceled(true);
-		}
-	}
+        return null;
+    }
 
-	@SubscribeEvent
-	public void onJump(LivingJumpEvent e) {
-		final Entity entity = e.entity;
-		JumpInfo boost = jumpBoosts.remove(entity);
-		if (boost != null) {
-			boost.modifyVelocity(entity);
+    @SubscribeEvent
+    public void onFall(LivingFallEvent evt) {
+        final Entity e = evt.entityLiving;
+        if (evt.distance > 4 && !e.isSneaking() && e instanceof EntityPlayer) {
+            EntityPlayer player = (EntityPlayer) e;
 
-			if (OpenMods.proxy.isClientPlayer(entity)) {
-				KeyBinding.setKeyBindState(Minecraft.getMinecraft().gameSettings.keyBindJump.getKeyCode(), false);
-			}
-		}
-	}
+            EnchantmentLevel level = tryUseEnchantment(player, ARMOR_BOOTS);
+            if (level == null) return;
+            JumpInfo boost = new JumpInfo(level, evt.distance);
+            level.createJumpExplosion(player);
+            if (OpenMods.proxy.isClientPlayer(player)) {
+                // And Now, Ladies and Gentlemen!
+                // Logic Defying...
+                // Loved By Everyone...
+                // Possibly Buggy
+                // TEEERRRRRIIIIBLE HAAAAAACK!
+                KeyBinding.setKeyBindState(Minecraft.getMinecraft().gameSettings.keyBindJump.getKeyCode(), true);
+                // no, seriously, can't find better way to make jump
+                jumpBoosts.put(player, boost);
+            }
+            evt.setCanceled(true);
+        }
+    }
 
-	private static boolean checkSource(DamageSource source) {
-		return source instanceof EntityDamageSource && ALLOWED_DAMAGE_SOURCE.contains(source.damageType);
-	}
+    @SubscribeEvent
+    public void onJump(LivingJumpEvent e) {
+        final Entity entity = e.entity;
+        JumpInfo boost = jumpBoosts.remove(entity);
+        if (boost != null) {
+            boost.modifyVelocity(entity);
 
-	@SubscribeEvent
-	public void onDamage(LivingAttackEvent e) {
-		final Entity victim = e.entity;
-		if (victim instanceof EntityPlayerMP && checkSource(e.source)) {
-			EnchantmentLevel level = tryUseUpperArmor(((EntityPlayer)victim));
+            if (OpenMods.proxy.isClientPlayer(entity)) {
+                KeyBinding.setKeyBindState(Minecraft.getMinecraft().gameSettings.keyBindJump.getKeyCode(), false);
+            }
+        }
+    }
 
-			if (level != null) level.createArmorExplosion(victim);
-		}
-	}
+    private static boolean checkSource(DamageSource source) {
+        return source instanceof EntityDamageSource && ALLOWED_DAMAGE_SOURCE.contains(source.damageType);
+    }
+
+    @SubscribeEvent
+    public void onDamage(LivingAttackEvent e) {
+        final Entity victim = e.entity;
+        if (victim instanceof EntityPlayerMP && checkSource(e.source)) {
+            EnchantmentLevel level = tryUseUpperArmor(((EntityPlayer) victim));
+
+            if (level != null) level.createArmorExplosion(victim);
+        }
+    }
 }

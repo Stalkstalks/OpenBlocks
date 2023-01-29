@@ -1,3 +1,4 @@
 package openblocks.api;
 
-public interface IApiInterface {}
+public interface IApiInterface {
+}

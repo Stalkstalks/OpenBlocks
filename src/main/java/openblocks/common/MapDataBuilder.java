@@ -1,13 +1,10 @@
 package openblocks.common;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Queues;
-import com.google.common.collect.Sets;
 import java.util.Collection;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.item.Item;
@@ -16,276 +13,286 @@ import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
+
 import openblocks.common.HeightMapData.LayerData;
 import openblocks.common.item.ItemEmptyMap;
 import openblocks.common.item.ItemHeightMap;
 import openmods.utils.BitSet;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Queues;
+import com.google.common.collect.Sets;
+
 public class MapDataBuilder {
-	private static final int LAYER_TERRAIN = 0;
-	private static final int LAYER_LIQUIDS = 1;
-	private static final int LAYER_COUNT = 2;
 
-	public final int mapId;
-	private HeightMapData data;
+    private static final int LAYER_TERRAIN = 0;
+    private static final int LAYER_LIQUIDS = 1;
+    private static final int LAYER_COUNT = 2;
 
-	private static class BlockCount {
-		public byte groundColor;
-		public int groundHeight;
+    public final int mapId;
+    private HeightMapData data;
 
-		public byte liquidColor;
-		public int liquidHeight;
+    private static class BlockCount {
 
-		private static Block getValidBlock(World world, Chunk chunk, int x, int y, int z) {
-			Block block = chunk.getBlock(x, y, z);
-			if (block.isAir(world, x, y, z)) return null;
+        public byte groundColor;
+        public int groundHeight;
 
-			if (block.getMaterial().getMaterialMapColor().colorIndex == 0) return null;
+        public byte liquidColor;
+        public int liquidHeight;
 
-			if (MapDataManager.instance.isBlockTransparent(block)) return null;
+        private static Block getValidBlock(World world, Chunk chunk, int x, int y, int z) {
+            Block block = chunk.getBlock(x, y, z);
+            if (block.isAir(world, x, y, z)) return null;
 
-			return block;
-		}
+            if (block.getMaterial().getMaterialMapColor().colorIndex == 0) return null;
 
-		public void average(World world, Chunk chunk, int startX, int startZ, int size) {
-			double groundHeightSum = 0;
-			int[] groundColors = new int[MapColor.mapColorArray.length];
+            if (MapDataManager.instance.isBlockTransparent(block)) return null;
 
-			double liquidHeightSum = 0;
-			int liquidCount = 0;
-			int[] liquidColors = new int[MapColor.mapColorArray.length];
+            return block;
+        }
 
-			for (int x = startX; x < startX + size; x++)
-				for (int z = startZ; z < startZ + size; z++) {
-					Block blockLiquid = null;
-					int heightLiquid = 0;
+        public void average(World world, Chunk chunk, int startX, int startZ, int size) {
+            double groundHeightSum = 0;
+            int[] groundColors = new int[MapColor.mapColorArray.length];
 
-					Block blockSolid = null;
-					int heightSolid = 0;
+            double liquidHeightSum = 0;
+            int liquidCount = 0;
+            int[] liquidColors = new int[MapColor.mapColorArray.length];
 
-					for (int y = 255; y >= 0; y--) {
-						Block block = getValidBlock(world, chunk, x, y, z);
-						if (block == null) continue;
+            for (int x = startX; x < startX + size; x++) for (int z = startZ; z < startZ + size; z++) {
+                Block blockLiquid = null;
+                int heightLiquid = 0;
 
-						if (block.getMaterial().isLiquid()) {
-							if (blockLiquid == null) {
-								blockLiquid = block;
-								heightLiquid = y;
-							}
-						} else {
-							blockSolid = block;
-							heightSolid = y;
-							break;
-						}
-					}
+                Block blockSolid = null;
+                int heightSolid = 0;
 
-					if (blockSolid != null) {
-						int meta = chunk.getBlockMetadata(x, heightSolid, z);
-						groundHeightSum += heightSolid;
-						int color = blockSolid.getMapColor(meta).colorIndex;
-						groundColors[color]++;
-					}
+                for (int y = 255; y >= 0; y--) {
+                    Block block = getValidBlock(world, chunk, x, y, z);
+                    if (block == null) continue;
 
-					if (blockLiquid != null) {
-						int meta = chunk.getBlockMetadata(x, heightLiquid, z);
-						liquidHeightSum += heightLiquid;
-						int color = blockLiquid.getMapColor(meta).colorIndex;
-						liquidColors[color]++;
-						liquidCount++;
-					}
-				}
+                    if (block.getMaterial().isLiquid()) {
+                        if (blockLiquid == null) {
+                            blockLiquid = block;
+                            heightLiquid = y;
+                        }
+                    } else {
+                        blockSolid = block;
+                        heightSolid = y;
+                        break;
+                    }
+                }
 
-			{
-				int maxColorCount = -1;
-				for (int i = 0; i < groundColors.length; i++)
-					if (groundColors[i] > maxColorCount) {
-						groundColor = (byte)i;
-						maxColorCount = groundColors[i];
-					}
-				groundHeight = (int)(groundHeightSum / (size * size));
-			}
+                if (blockSolid != null) {
+                    int meta = chunk.getBlockMetadata(x, heightSolid, z);
+                    groundHeightSum += heightSolid;
+                    int color = blockSolid.getMapColor(meta).colorIndex;
+                    groundColors[color]++;
+                }
 
-			if (liquidCount > size * size / 2) {
-				int maxColorCount = -1;
-				for (int i = 0; i < liquidColors.length; i++)
-					if (liquidColors[i] > maxColorCount) {
-						liquidColor = (byte)i;
-						maxColorCount = liquidColors[i];
-					}
+                if (blockLiquid != null) {
+                    int meta = chunk.getBlockMetadata(x, heightLiquid, z);
+                    liquidHeightSum += heightLiquid;
+                    int color = blockLiquid.getMapColor(meta).colorIndex;
+                    liquidColors[color]++;
+                    liquidCount++;
+                }
+            }
 
-				liquidHeight = (int)(liquidHeightSum / liquidCount);
-			}
-		}
-	}
+            {
+                int maxColorCount = -1;
+                for (int i = 0; i < groundColors.length; i++) if (groundColors[i] > maxColorCount) {
+                    groundColor = (byte) i;
+                    maxColorCount = groundColors[i];
+                }
+                groundHeight = (int) (groundHeightSum / (size * size));
+            }
 
-	public class ChunkJob {
-		public final ChunkCoordIntPair chunk;
-		public final int pixelsPerChunk;
-		public final int mapMinX;
-		public final int mapMinY;
-		public final int bitNum;
+            if (liquidCount > size * size / 2) {
+                int maxColorCount = -1;
+                for (int i = 0; i < liquidColors.length; i++) if (liquidColors[i] > maxColorCount) {
+                    liquidColor = (byte) i;
+                    maxColorCount = liquidColors[i];
+                }
 
-		private ChunkJob(ChunkCoordIntPair chunk, int pixelsPerChunk, int mapMinX, int mapMinY, int bitNum) {
-			this.chunk = chunk;
-			this.pixelsPerChunk = pixelsPerChunk;
-			this.mapMinX = mapMinX;
-			this.mapMinY = mapMinY;
-			this.bitNum = bitNum;
-		}
+                liquidHeight = (int) (liquidHeightSum / liquidCount);
+            }
+        }
+    }
 
-		private void mapChunk(World world, Chunk chunk) {
-			LayerData ground = data.layers[LAYER_TERRAIN];
-			LayerData liquid = data.layers[LAYER_LIQUIDS];
+    public class ChunkJob {
 
-			final int blocksPerPixel = 16 / pixelsPerChunk;
+        public final ChunkCoordIntPair chunk;
+        public final int pixelsPerChunk;
+        public final int mapMinX;
+        public final int mapMinY;
+        public final int bitNum;
 
-			int blockInChunkX = 0;
-			for (int mapX = mapMinX; mapX < mapMinX + pixelsPerChunk; mapX++) {
-				int blockInChunkZ = 0;
-				for (int mapY = mapMinY; mapY < mapMinY + pixelsPerChunk; mapY++) {
-					BlockCount count = new BlockCount();
-					count.average(world, chunk, blockInChunkX, blockInChunkZ, blocksPerPixel);
+        private ChunkJob(ChunkCoordIntPair chunk, int pixelsPerChunk, int mapMinX, int mapMinY, int bitNum) {
+            this.chunk = chunk;
+            this.pixelsPerChunk = pixelsPerChunk;
+            this.mapMinX = mapMinX;
+            this.mapMinY = mapMinY;
+            this.bitNum = bitNum;
+        }
 
-					int index = mapY * 64 + mapX;
+        private void mapChunk(World world, Chunk chunk) {
+            LayerData ground = data.layers[LAYER_TERRAIN];
+            LayerData liquid = data.layers[LAYER_LIQUIDS];
 
-					ground.colorMap[index] = count.groundColor;
-					ground.heightMap[index] = (byte)(count.groundHeight);
+            final int blocksPerPixel = 16 / pixelsPerChunk;
 
-					liquid.colorMap[index] = count.liquidColor;
-					liquid.heightMap[index] = (byte)(count.liquidHeight);
+            int blockInChunkX = 0;
+            for (int mapX = mapMinX; mapX < mapMinX + pixelsPerChunk; mapX++) {
+                int blockInChunkZ = 0;
+                for (int mapY = mapMinY; mapY < mapMinY + pixelsPerChunk; mapY++) {
+                    BlockCount count = new BlockCount();
+                    count.average(world, chunk, blockInChunkX, blockInChunkZ, blocksPerPixel);
 
-					blockInChunkZ += blocksPerPixel;
-				}
-				blockInChunkX += blocksPerPixel;
-			}
-			MapDataManager.instance.markDataUpdated(world, mapId);
-		}
-	}
+                    int index = mapY * 64 + mapX;
 
-	public MapDataBuilder(int mapId) {
-		this.mapId = mapId;
-	}
+                    ground.colorMap[index] = count.groundColor;
+                    ground.heightMap[index] = (byte) (count.groundHeight);
 
-	public void loadMap(World world) {
-		this.data = MapDataManager.getMapData(world, mapId);
-	}
+                    liquid.colorMap[index] = count.liquidColor;
+                    liquid.heightMap[index] = (byte) (count.liquidHeight);
 
-	public void resetMap(World world, int x, int z) {
-		this.data = MapDataManager.getMapData(world, mapId);
-		data.centerX = ((x >> 4) << 4);
-		data.centerZ = ((z >> 4) << 4);
-		data.dimension = world.provider.dimensionId;
+                    blockInChunkZ += blocksPerPixel;
+                }
+                blockInChunkX += blocksPerPixel;
+            }
+            MapDataManager.instance.markDataUpdated(world, mapId);
+        }
+    }
 
-		if (data.layers == null || data.layers.length != LAYER_COUNT) data.layers = new HeightMapData.LayerData[LAYER_COUNT];
+    public MapDataBuilder(int mapId) {
+        this.mapId = mapId;
+    }
 
-		LayerData ground = data.layers[LAYER_TERRAIN];
+    public void loadMap(World world) {
+        this.data = MapDataManager.getMapData(world, mapId);
+    }
 
-		if (ground == null) {
-			ground = new LayerData();
-			data.layers[LAYER_TERRAIN] = ground;
-		}
-		ground.alpha = (byte)255;
+    public void resetMap(World world, int x, int z) {
+        this.data = MapDataManager.getMapData(world, mapId);
+        data.centerX = ((x >> 4) << 4);
+        data.centerZ = ((z >> 4) << 4);
+        data.dimension = world.provider.dimensionId;
 
-		LayerData liquid = data.layers[LAYER_LIQUIDS];
+        if (data.layers == null || data.layers.length != LAYER_COUNT)
+            data.layers = new HeightMapData.LayerData[LAYER_COUNT];
 
-		if (liquid == null) {
-			liquid = new LayerData();
-			data.layers[LAYER_LIQUIDS] = liquid;
-		}
-		liquid.alpha = (byte)128;
-		MapDataManager.instance.markDataUpdated(world, mapId);
-	}
+        LayerData ground = data.layers[LAYER_TERRAIN];
 
-	public Set<ChunkJob> createJobs(BitSet finishedChunks) {
-		Preconditions.checkState(data != null, "Invalid usage, load map first");
+        if (ground == null) {
+            ground = new LayerData();
+            data.layers[LAYER_TERRAIN] = ground;
+        }
+        ground.alpha = (byte) 255;
 
-		Map<ChunkCoordIntPair, ChunkJob> result = Maps.newHashMap();
-		final int blocksPerPixel = (1 << data.scale);
-		final int pixelsPerChunk = 16 / blocksPerPixel;
-		final int chunksPerSide = 64 / pixelsPerChunk;
+        LayerData liquid = data.layers[LAYER_LIQUIDS];
 
-		int middleChunkX = data.centerX >> 4;
-		int middleChunkZ = data.centerZ >> 4;
+        if (liquid == null) {
+            liquid = new LayerData();
+            data.layers[LAYER_LIQUIDS] = liquid;
+        }
+        liquid.alpha = (byte) 128;
+        MapDataManager.instance.markDataUpdated(world, mapId);
+    }
 
-		int bitNum = 0;
-		for (int mapX = 0, chunkX = middleChunkX - chunksPerSide / 2; chunkX < middleChunkX + chunksPerSide / 2; mapX += pixelsPerChunk, chunkX++)
-			for (int mapY = 0, chunkZ = middleChunkZ - chunksPerSide / 2; chunkZ < middleChunkZ + chunksPerSide / 2; mapY += pixelsPerChunk, chunkZ++) {
-				ChunkCoordIntPair chunk = new ChunkCoordIntPair(chunkX, chunkZ);
-				if (!finishedChunks.testBit(bitNum)) {
-					result.put(chunk, new ChunkJob(chunk, pixelsPerChunk, mapX, mapY, bitNum));
-				}
-				bitNum++;
-			}
+    public Set<ChunkJob> createJobs(BitSet finishedChunks) {
+        Preconditions.checkState(data != null, "Invalid usage, load map first");
 
-		return Sets.newHashSet(result.values());
-	}
+        Map<ChunkCoordIntPair, ChunkJob> result = Maps.newHashMap();
+        final int blocksPerPixel = (1 << data.scale);
+        final int pixelsPerChunk = 16 / blocksPerPixel;
+        final int chunksPerSide = 64 / pixelsPerChunk;
 
-	private static class JobDistance implements Comparable<JobDistance> {
-		public final double distance;
-		public final ChunkJob job;
+        int middleChunkX = data.centerX >> 4;
+        int middleChunkZ = data.centerZ >> 4;
 
-		public JobDistance(double distance, ChunkJob job) {
-			this.distance = distance;
-			this.job = job;
-		}
+        int bitNum = 0;
+        for (int mapX = 0, chunkX = middleChunkX - chunksPerSide / 2; chunkX
+                < middleChunkX + chunksPerSide / 2; mapX += pixelsPerChunk, chunkX++)
+            for (int mapY = 0, chunkZ = middleChunkZ - chunksPerSide / 2; chunkZ
+                    < middleChunkZ + chunksPerSide / 2; mapY += pixelsPerChunk, chunkZ++) {
+                        ChunkCoordIntPair chunk = new ChunkCoordIntPair(chunkX, chunkZ);
+                        if (!finishedChunks.testBit(bitNum)) {
+                            result.put(chunk, new ChunkJob(chunk, pixelsPerChunk, mapX, mapY, bitNum));
+                        }
+                        bitNum++;
+                    }
 
-		@Override
-		public int compareTo(JobDistance o) {
-			return Double.compare(distance, o.distance);
-		}
-	}
+        return Sets.newHashSet(result.values());
+    }
 
-	public static ChunkJob doNextChunk(World world, double x, double z, Collection<ChunkJob> jobs) {
-		if (jobs.isEmpty()) return null;
+    private static class JobDistance implements Comparable<JobDistance> {
 
-		PriorityQueue<JobDistance> distances = Queues.newPriorityQueue();
+        public final double distance;
+        public final ChunkJob job;
 
-		for (ChunkJob job : jobs) {
-			ChunkCoordIntPair chunk = job.chunk;
-			double dx = chunk.getCenterXPos() - x;
-			double dz = chunk.getCenterZPosition() - z;
-			distances.add(new JobDistance(dx * dx + dz * dz, job));
-		}
+        public JobDistance(double distance, ChunkJob job) {
+            this.distance = distance;
+            this.job = job;
+        }
 
-		IChunkProvider provider = world.getChunkProvider();
-		while (!distances.isEmpty()) {
-			JobDistance dist = distances.poll();
-			ChunkJob job = dist.job;
-			ChunkCoordIntPair chunkCoord = job.chunk;
+        @Override
+        public int compareTo(JobDistance o) {
+            return Double.compare(distance, o.distance);
+        }
+    }
 
-			if (provider.chunkExists(chunkCoord.chunkXPos, chunkCoord.chunkZPos)) {
-				Chunk chunk = provider.loadChunk(chunkCoord.chunkXPos, chunkCoord.chunkZPos);
-				job.mapChunk(world, chunk);
-				return job;
-			}
-		}
+    public static ChunkJob doNextChunk(World world, double x, double z, Collection<ChunkJob> jobs) {
+        if (jobs.isEmpty()) return null;
 
-		return null;
-	}
+        PriorityQueue<JobDistance> distances = Queues.newPriorityQueue();
 
-	public static ItemStack upgradeToMap(World world, ItemStack stack) {
-		Item item = stack.getItem();
-		if (item instanceof ItemHeightMap) return stack;
-		else if (item instanceof ItemEmptyMap) {
-			return ItemEmptyMap.upgradeToMap(world, stack);
-		} else throw new IllegalArgumentException("Invalid item type: " + item);
-	}
+        for (ChunkJob job : jobs) {
+            ChunkCoordIntPair chunk = job.chunk;
+            double dx = chunk.getCenterXPos() - x;
+            double dz = chunk.getCenterZPosition() - z;
+            distances.add(new JobDistance(dx * dx + dz * dz, job));
+        }
 
-	public int size() {
-		return 4 << data.scale;
-	}
+        IChunkProvider provider = world.getChunkProvider();
+        while (!distances.isEmpty()) {
+            JobDistance dist = distances.poll();
+            ChunkJob job = dist.job;
+            ChunkCoordIntPair chunkCoord = job.chunk;
 
-	private int neededBits() {
-		int line = size();
-		return line * line;
-	}
+            if (provider.chunkExists(chunkCoord.chunkXPos, chunkCoord.chunkZPos)) {
+                Chunk chunk = provider.loadChunk(chunkCoord.chunkXPos, chunkCoord.chunkZPos);
+                job.mapChunk(world, chunk);
+                return job;
+            }
+        }
 
-	public void resizeIfNeeded(BitSet bitmap) {
-		int needed = neededBits();
-		if (!bitmap.checkSize(needed)) bitmap.resize(needed);
-	}
+        return null;
+    }
 
-	public void resize(BitSet bitmap) {
-		bitmap.resize(neededBits());
-	}
+    public static ItemStack upgradeToMap(World world, ItemStack stack) {
+        Item item = stack.getItem();
+        if (item instanceof ItemHeightMap) return stack;
+        else if (item instanceof ItemEmptyMap) {
+            return ItemEmptyMap.upgradeToMap(world, stack);
+        } else throw new IllegalArgumentException("Invalid item type: " + item);
+    }
+
+    public int size() {
+        return 4 << data.scale;
+    }
+
+    private int neededBits() {
+        int line = size();
+        return line * line;
+    }
+
+    public void resizeIfNeeded(BitSet bitmap) {
+        int needed = neededBits();
+        if (!bitmap.checkSize(needed)) bitmap.resize(needed);
+    }
+
+    public void resize(BitSet bitmap) {
+        bitmap.resize(neededBits());
+    }
 }

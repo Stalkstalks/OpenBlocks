@@ -1,11 +1,8 @@
 package openblocks.common.tileentity;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import java.util.List;
 import java.util.Set;
+
 import net.minecraft.block.Block;
 import net.minecraft.command.IEntitySelector;
 import net.minecraft.entity.Entity;
@@ -17,6 +14,7 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.ForgeDirection;
+
 import openblocks.OpenBlocks;
 import openblocks.OpenBlocks.Blocks;
 import openmods.Log;
@@ -32,165 +30,181 @@ import openmods.tileentity.SyncedTileEntity;
 import openmods.utils.BlockUtils;
 import openmods.utils.EntityUtils;
 
-public class TileEntityTarget extends SyncedTileEntity implements ISurfaceAttachment, INeighbourAwareTile, IAddAwareTile {
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
-	private int strength = 0;
-	private int tickCounter = -1;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
-	private SyncableBoolean active;
+public class TileEntityTarget extends SyncedTileEntity
+        implements ISurfaceAttachment, INeighbourAwareTile, IAddAwareTile {
 
-	private final static SafeClassLoad FLANS_BULLET = SafeClassLoad.create("com.flansmod.common.guns.EntityBullet");
+    private int strength = 0;
+    private int tickCounter = -1;
 
-	public final static Set<Class<?>> EXTRA_PROJECTILE_CLASSES = Sets.newHashSet();
+    private SyncableBoolean active;
 
-	private static void addClass(SafeClassLoad cls) {
-		if (cls.tryLoad()) EXTRA_PROJECTILE_CLASSES.add(cls.get());
-		else Log.debug("Class %s not found, skipping target path prediction from FlansMod", cls.clsName);
-	}
+    private final static SafeClassLoad FLANS_BULLET = SafeClassLoad.create("com.flansmod.common.guns.EntityBullet");
 
-	static {
-		addClass(FLANS_BULLET);
-	}
+    public final static Set<Class<?>> EXTRA_PROJECTILE_CLASSES = Sets.newHashSet();
 
-	private final static IEntitySelector PROJECTILE_SELECTOR = new IEntitySelector() {
-		@Override
-		public boolean isEntityApplicable(Entity p_82704_1_) {
-			return EXTRA_PROJECTILE_CLASSES.contains(p_82704_1_.getClass());
-		}
-	};
+    private static void addClass(SafeClassLoad cls) {
+        if (cls.tryLoad()) EXTRA_PROJECTILE_CLASSES.add(cls.get());
+        else Log.debug("Class %s not found, skipping target path prediction from FlansMod", cls.clsName);
+    }
 
-	public TileEntityTarget() {}
+    static {
+        addClass(FLANS_BULLET);
+    }
 
-	@Override
-	protected void createSyncedFields() {
-		active = new SyncableBoolean();
-	}
+    private final static IEntitySelector PROJECTILE_SELECTOR = new IEntitySelector() {
 
-	@Override
-	public void updateEntity() {
-		super.updateEntity();
-		if (!worldObj.isRemote) predictOtherProjectiles();
+        @Override
+        public boolean isEntityApplicable(Entity p_82704_1_) {
+            return EXTRA_PROJECTILE_CLASSES.contains(p_82704_1_.getClass());
+        }
+    };
 
-		tickCounter--;
-		if (tickCounter == 0) {
-			tickCounter = -1;
-			strength = 0;
-			worldObj.notifyBlocksOfNeighborChange(xCoord, yCoord, zCoord, OpenBlocks.Blocks.target);
-		}
-	}
+    public TileEntityTarget() {}
 
-	private void predictOtherProjectiles() {
-		@SuppressWarnings("unchecked")
-		List<Entity> projectiles = worldObj.selectEntitiesWithinAABB(Entity.class, getBB().expand(10, 10, 10), PROJECTILE_SELECTOR);
+    @Override
+    protected void createSyncedFields() {
+        active = new SyncableBoolean();
+    }
 
-		for (Entity projectile : projectiles) {
-			MovingObjectPosition hit = EntityUtils.raytraceEntity(projectile);
-			if (BlockUtils.isBlockHit(hit, this)) {
-				Blocks.target.onTargetHit(worldObj, xCoord, yCoord, zCoord, hit.hitVec);
-			}
-		}
-	}
+    @Override
+    public void updateEntity() {
+        super.updateEntity();
+        if (!worldObj.isRemote) predictOtherProjectiles();
 
-	public void setEnabled(boolean en) {
-		active.set(en);
-	}
+        tickCounter--;
+        if (tickCounter == 0) {
+            tickCounter = -1;
+            strength = 0;
+            worldObj.notifyBlocksOfNeighborChange(xCoord, yCoord, zCoord, OpenBlocks.Blocks.target);
+        }
+    }
 
-	public boolean isEnabled() {
-		return active.get();
-	}
+    private void predictOtherProjectiles() {
+        @SuppressWarnings("unchecked")
+        List<Entity> projectiles = worldObj
+                .selectEntitiesWithinAABB(Entity.class, getBB().expand(10, 10, 10), PROJECTILE_SELECTOR);
 
-	public float getTargetRotation() {
-		return isEnabled()? 0 : -(float)(Math.PI / 2);
-	}
+        for (Entity projectile : projectiles) {
+            MovingObjectPosition hit = EntityUtils.raytraceEntity(projectile);
+            if (BlockUtils.isBlockHit(hit, this)) {
+                Blocks.target.onTargetHit(worldObj, xCoord, yCoord, zCoord, hit.hitVec);
+            }
+        }
+    }
 
-	public int getStrength() {
-		return strength;
-	}
+    public void setEnabled(boolean en) {
+        active.set(en);
+    }
 
-	public void setStrength(int strength) {
-		this.strength = strength;
-		tickCounter = 10;
-		worldObj.notifyBlocksOfNeighborChange(xCoord, yCoord, zCoord, OpenBlocks.Blocks.target);
-	}
+    public boolean isEnabled() {
+        return active.get();
+    }
 
-	@Override
-	public ForgeDirection getSurfaceDirection() {
-		return ForgeDirection.DOWN;
-	}
+    public float getTargetRotation() {
+        return isEnabled() ? 0 : -(float) (Math.PI / 2);
+    }
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void prepareForInventoryRender(Block block, int metadata) {
-		super.prepareForInventoryRender(block, metadata);
-		setEnabled(true);
-	}
+    public int getStrength() {
+        return strength;
+    }
 
-	@Override
-	public void onNeighbourChanged(Block block) {
-		updateRedstone();
-	}
+    public void setStrength(int strength) {
+        this.strength = strength;
+        tickCounter = 10;
+        worldObj.notifyBlocksOfNeighborChange(xCoord, yCoord, zCoord, OpenBlocks.Blocks.target);
+    }
 
-	@Override
-	public void onAdded() {
-		updateRedstone();
-	}
+    @Override
+    public ForgeDirection getSurfaceDirection() {
+        return ForgeDirection.DOWN;
+    }
 
-	private void updateRedstone() {
-		if (!(worldObj instanceof WorldServer)) return;
-		WorldServer world = (WorldServer)worldObj;
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void prepareForInventoryRender(Block block, int metadata) {
+        super.prepareForInventoryRender(block, metadata);
+        setEnabled(true);
+    }
 
-		boolean isPowered = worldObj.isBlockIndirectlyGettingPowered(xCoord, yCoord, zCoord);
+    @Override
+    public void onNeighbourChanged(Block block) {
+        updateRedstone();
+    }
 
-		if (isPowered != isEnabled()) {
-			dropArrowsAsItems(world);
-			worldObj.playSoundEffect(xCoord + 0.5, yCoord + 0.5, zCoord + 0.5, isPowered? "openblocks:target.open" : "openblocks:target.close", 0.5f, 1.0f);
+    @Override
+    public void onAdded() {
+        updateRedstone();
+    }
 
-			setEnabled(isPowered);
+    private void updateRedstone() {
+        if (!(worldObj instanceof WorldServer)) return;
+        WorldServer world = (WorldServer) worldObj;
 
-			sync();
-		}
-	}
+        boolean isPowered = worldObj.isBlockIndirectlyGettingPowered(xCoord, yCoord, zCoord);
 
-	private void dropArrowsAsItems(WorldServer world) {
-		final AxisAlignedBB aabb = AxisAlignedBB.getBoundingBox(xCoord - 0.1, yCoord - 0.1, zCoord - 0.1, xCoord + 1.1, yCoord + 1.1, zCoord + 1.1);
+        if (isPowered != isEnabled()) {
+            dropArrowsAsItems(world);
+            worldObj.playSoundEffect(
+                    xCoord + 0.5,
+                    yCoord + 0.5,
+                    zCoord + 0.5,
+                    isPowered ? "openblocks:target.open" : "openblocks:target.close",
+                    0.5f,
+                    1.0f);
 
-		@SuppressWarnings("unchecked")
-		final List<EntityArrow> arrows = worldObj.getEntitiesWithinAABB(EntityArrow.class, aabb);
+            setEnabled(isPowered);
 
-		final List<ItemStack> drops = Lists.newArrayList();
+            sync();
+        }
+    }
 
-		int failed = FakePlayerPool.instance.executeOnPlayer(world, new PlayerUserReturning<Integer>() {
+    private void dropArrowsAsItems(WorldServer world) {
+        final AxisAlignedBB aabb = AxisAlignedBB
+                .getBoundingBox(xCoord - 0.1, yCoord - 0.1, zCoord - 0.1, xCoord + 1.1, yCoord + 1.1, zCoord + 1.1);
 
-			@Override
-			public Integer usePlayer(OpenModsFakePlayer fakePlayer) {
-				int failed = 0;
+        @SuppressWarnings("unchecked")
+        final List<EntityArrow> arrows = worldObj.getEntitiesWithinAABB(EntityArrow.class, aabb);
 
-				for (EntityArrow arrow : arrows) {
-					try {
-						arrow.onCollideWithPlayer(fakePlayer);
-					} catch (Throwable t) {
-						Log.warn(t, "Failed to collide arrow %s with fake player, returing vanilla one", arrow);
-						failed++;
-					}
-				}
+        final List<ItemStack> drops = Lists.newArrayList();
 
-				IInventory inventory = fakePlayer.inventory;
-				for (int i = 0; i < inventory.getSizeInventory(); i++) {
-					ItemStack stack = inventory.getStackInSlot(i);
-					if (stack != null) {
-						drops.add(stack);
-						inventory.setInventorySlotContents(i, null);
-					}
-				}
+        int failed = FakePlayerPool.instance.executeOnPlayer(world, new PlayerUserReturning<Integer>() {
 
-				return failed;
+            @Override
+            public Integer usePlayer(OpenModsFakePlayer fakePlayer) {
+                int failed = 0;
 
-			}
-		});
+                for (EntityArrow arrow : arrows) {
+                    try {
+                        arrow.onCollideWithPlayer(fakePlayer);
+                    } catch (Throwable t) {
+                        Log.warn(t, "Failed to collide arrow %s with fake player, returing vanilla one", arrow);
+                        failed++;
+                    }
+                }
 
-		for (ItemStack drop : drops)
-			BlockUtils.dropItemStackInWorld(worldObj, xCoord, yCoord, zCoord, drop);
+                IInventory inventory = fakePlayer.inventory;
+                for (int i = 0; i < inventory.getSizeInventory(); i++) {
+                    ItemStack stack = inventory.getStackInSlot(i);
+                    if (stack != null) {
+                        drops.add(stack);
+                        inventory.setInventorySlotContents(i, null);
+                    }
+                }
 
-		if (failed > 0) BlockUtils.dropItemStackInWorld(worldObj, xCoord, yCoord, zCoord, new ItemStack(Items.arrow, failed));
-	}
+                return failed;
+
+            }
+        });
+
+        for (ItemStack drop : drops) BlockUtils.dropItemStackInWorld(worldObj, xCoord, yCoord, zCoord, drop);
+
+        if (failed > 0)
+            BlockUtils.dropItemStackInWorld(worldObj, xCoord, yCoord, zCoord, new ItemStack(Items.arrow, failed));
+    }
 }

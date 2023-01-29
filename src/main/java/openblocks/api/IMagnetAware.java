@@ -1,5 +1,6 @@
 package openblocks.api;
 
 public interface IMagnetAware {
-	public boolean canRelease();
+
+    public boolean canRelease();
 }

@@ -1,33 +1,35 @@
 package openblocks.api;
 
 public class OpenBlocksApi {
-	public static interface ApiProvider {
-		public <T extends IApiInterface> T getApi(Class<T> cls);
 
-		public <T extends IApiInterface> boolean isApiPresent(Class<T> cls);
-	}
+    public static interface ApiProvider {
 
-	private OpenBlocksApi() {}
+        public <T extends IApiInterface> T getApi(Class<T> cls);
 
-	private static ApiProvider provider;
+        public <T extends IApiInterface> boolean isApiPresent(Class<T> cls);
+    }
 
-	// OpenBlocks will use this method to provide actual implementation
-	public static void init(ApiProvider provider) {
-		if (OpenBlocksApi.provider != null) throw new IllegalStateException("API already initialized");
-		OpenBlocksApi.provider = provider;
-	}
+    private OpenBlocksApi() {}
 
-	/**
-	 * @deprecated Use {@link ApiHolder}.
-	 */
-	@Deprecated
-	public static <T extends IApiInterface> T getApi(Class<T> cls) {
-		if (provider == null) throw new IllegalStateException("API not initialized");
-		return provider.getApi(cls);
-	}
+    private static ApiProvider provider;
 
-	public static <T extends IApiInterface> boolean isApiPresent(Class<T> cls) {
-		if (provider == null) throw new IllegalStateException("API not initialized");
-		return provider.isApiPresent(cls);
-	}
+    // OpenBlocks will use this method to provide actual implementation
+    public static void init(ApiProvider provider) {
+        if (OpenBlocksApi.provider != null) throw new IllegalStateException("API already initialized");
+        OpenBlocksApi.provider = provider;
+    }
+
+    /**
+     * @deprecated Use {@link ApiHolder}.
+     */
+    @Deprecated
+    public static <T extends IApiInterface> T getApi(Class<T> cls) {
+        if (provider == null) throw new IllegalStateException("API not initialized");
+        return provider.getApi(cls);
+    }
+
+    public static <T extends IApiInterface> boolean isApiPresent(Class<T> cls) {
+        if (provider == null) throw new IllegalStateException("API not initialized");
+        return provider.isApiPresent(cls);
+    }
 }

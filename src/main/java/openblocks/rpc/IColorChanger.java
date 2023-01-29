@@ -1,5 +1,6 @@
 package openblocks.rpc;
 
 public interface IColorChanger {
-	public void changeColor(int color);
+
+    public void changeColor(int color);
 }

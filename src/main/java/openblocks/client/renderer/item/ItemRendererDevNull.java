@@ -1,6 +1,5 @@
 package openblocks.client.renderer.item;
 
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -15,181 +14,190 @@ import net.minecraft.util.IIcon;
 import net.minecraftforge.client.IItemRenderer;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.common.MinecraftForge;
+
 import openblocks.common.item.ItemDevNull;
 import openblocks.common.item.ItemDevNull.Icons;
 import openmods.inventory.ItemInventory;
 import openmods.renderer.DisplayListWrapper;
 import openmods.utils.TextureUtils;
 import openmods.utils.render.RenderUtils;
+
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+
 public class ItemRendererDevNull implements IItemRenderer {
 
-	protected static RenderItem itemRenderer = new RenderItem();
+    protected static RenderItem itemRenderer = new RenderItem();
 
-	private static class Counter {
-		private int value;
+    private static class Counter {
 
-		public int enter() {
-			return ++value;
-		}
+        private int value;
 
-		public void exit() {
-			--value;
-		}
-	}
+        public int enter() {
+            return ++value;
+        }
 
-	private final ThreadLocal<Counter> counter = new ThreadLocal<Counter>() {
-		@Override
-		protected Counter initialValue() {
-			return new Counter();
-		}
-	};
+        public void exit() {
+            --value;
+        }
+    }
 
-	private DisplayListWrapper cube = new DisplayListWrapper() {
+    private final ThreadLocal<Counter> counter = new ThreadLocal<Counter>() {
 
-		@Override
-		public void compile() {
-			IIcon backgroundIcon = Icons.iconFull;
-			final float minU = backgroundIcon.getMinU();
-			final float minV = backgroundIcon.getMinV();
-			final float maxV = backgroundIcon.getMaxV();
-			final float maxU = backgroundIcon.getMaxU();
+        @Override
+        protected Counter initialValue() {
+            return new Counter();
+        }
+    };
 
-			final Tessellator tes = new Tessellator();
-			tes.startDrawingQuads();
+    private DisplayListWrapper cube = new DisplayListWrapper() {
 
-			tes.addVertexWithUV(0, 0, 0, minU, minV);
-			tes.addVertexWithUV(0, 1, 0, minU, maxV);
-			tes.addVertexWithUV(1, 1, 0, maxU, maxV);
-			tes.addVertexWithUV(1, 0, 0, maxU, minV);
+        @Override
+        public void compile() {
+            IIcon backgroundIcon = Icons.iconFull;
+            final float minU = backgroundIcon.getMinU();
+            final float minV = backgroundIcon.getMinV();
+            final float maxV = backgroundIcon.getMaxV();
+            final float maxU = backgroundIcon.getMaxU();
 
-			tes.addVertexWithUV(0, 0, 1, minU, minV);
-			tes.addVertexWithUV(1, 0, 1, minU, maxV);
-			tes.addVertexWithUV(1, 1, 1, maxU, maxV);
-			tes.addVertexWithUV(0, 1, 1, maxU, minV);
+            final Tessellator tes = new Tessellator();
+            tes.startDrawingQuads();
 
-			tes.addVertexWithUV(0, 0, 0, minU, minV);
-			tes.addVertexWithUV(0, 0, 1, minU, maxV);
-			tes.addVertexWithUV(0, 1, 1, maxU, maxV);
-			tes.addVertexWithUV(0, 1, 0, maxU, minV);
+            tes.addVertexWithUV(0, 0, 0, minU, minV);
+            tes.addVertexWithUV(0, 1, 0, minU, maxV);
+            tes.addVertexWithUV(1, 1, 0, maxU, maxV);
+            tes.addVertexWithUV(1, 0, 0, maxU, minV);
 
-			tes.addVertexWithUV(1, 0, 0, minU, minV);
-			tes.addVertexWithUV(1, 1, 0, minU, maxV);
-			tes.addVertexWithUV(1, 1, 1, maxU, maxV);
-			tes.addVertexWithUV(1, 0, 1, maxU, minV);
+            tes.addVertexWithUV(0, 0, 1, minU, minV);
+            tes.addVertexWithUV(1, 0, 1, minU, maxV);
+            tes.addVertexWithUV(1, 1, 1, maxU, maxV);
+            tes.addVertexWithUV(0, 1, 1, maxU, minV);
 
-			tes.addVertexWithUV(0, 0, 0, minU, minV);
-			tes.addVertexWithUV(1, 0, 0, minU, maxV);
-			tes.addVertexWithUV(1, 0, 1, maxU, maxV);
-			tes.addVertexWithUV(0, 0, 1, maxU, minV);
+            tes.addVertexWithUV(0, 0, 0, minU, minV);
+            tes.addVertexWithUV(0, 0, 1, minU, maxV);
+            tes.addVertexWithUV(0, 1, 1, maxU, maxV);
+            tes.addVertexWithUV(0, 1, 0, maxU, minV);
 
-			tes.addVertexWithUV(0, 1, 0, minU, minV);
-			tes.addVertexWithUV(0, 1, 1, minU, maxV);
-			tes.addVertexWithUV(1, 1, 1, maxU, maxV);
-			tes.addVertexWithUV(1, 1, 0, maxU, minV);
+            tes.addVertexWithUV(1, 0, 0, minU, minV);
+            tes.addVertexWithUV(1, 1, 0, minU, maxV);
+            tes.addVertexWithUV(1, 1, 1, maxU, maxV);
+            tes.addVertexWithUV(1, 0, 1, maxU, minV);
 
-			GL11.glEnable(GL11.GL_CULL_FACE);
-			GL11.glFrontFace(GL11.GL_CW);
-			GL11.glDisable(GL11.GL_LIGHTING);
-			tes.draw();
-			GL11.glEnable(GL11.GL_LIGHTING);
-			GL11.glFrontFace(GL11.GL_CCW);
-		}
-	};
+            tes.addVertexWithUV(0, 0, 0, minU, minV);
+            tes.addVertexWithUV(1, 0, 0, minU, maxV);
+            tes.addVertexWithUV(1, 0, 1, maxU, maxV);
+            tes.addVertexWithUV(0, 0, 1, maxU, minV);
 
-	public ItemRendererDevNull() {
-		MinecraftForge.EVENT_BUS.register(this);
-	}
+            tes.addVertexWithUV(0, 1, 0, minU, minV);
+            tes.addVertexWithUV(0, 1, 1, minU, maxV);
+            tes.addVertexWithUV(1, 1, 1, maxU, maxV);
+            tes.addVertexWithUV(1, 1, 0, maxU, minV);
 
-	@SubscribeEvent
-	public void onTextuteChange(TextureStitchEvent evt) {
-		if (evt.map.getTextureType() == TextureUtils.TEXTURE_MAP_ITEMS) cube.reset();
-	}
+            GL11.glEnable(GL11.GL_CULL_FACE);
+            GL11.glFrontFace(GL11.GL_CW);
+            GL11.glDisable(GL11.GL_LIGHTING);
+            tes.draw();
+            GL11.glEnable(GL11.GL_LIGHTING);
+            GL11.glFrontFace(GL11.GL_CCW);
+        }
+    };
 
-	@Override
-	public boolean handleRenderType(ItemStack item, ItemRenderType type) {
-		return true;
-	}
+    public ItemRendererDevNull() {
+        MinecraftForge.EVENT_BUS.register(this);
+    }
 
-	@Override
-	public boolean shouldUseRenderHelper(ItemRenderType type, ItemStack stack, ItemRendererHelper helper) {
-		return type != ItemRenderType.INVENTORY;
-	}
+    @SubscribeEvent
+    public void onTextuteChange(TextureStitchEvent evt) {
+        if (evt.map.getTextureType() == TextureUtils.TEXTURE_MAP_ITEMS) cube.reset();
+    }
 
-	@Override
-	public void renderItem(ItemRenderType type, ItemStack containerStack, Object... data) {
-		if (data.length == 0 || !(data[0] instanceof RenderBlocks)) { return; }
+    @Override
+    public boolean handleRenderType(ItemStack item, ItemRenderType type) {
+        return true;
+    }
 
-		final Counter counter = this.counter.get();
-		if (counter.enter() < ItemDevNull.STACK_LIMIT) {
-			ItemInventory inv = new ItemInventory(containerStack, 1);
-			ItemStack containedStack = inv.getStackInSlot(0);
+    @Override
+    public boolean shouldUseRenderHelper(ItemRenderType type, ItemStack stack, ItemRendererHelper helper) {
+        return type != ItemRenderType.INVENTORY;
+    }
 
-			if (type == ItemRenderType.INVENTORY) renderInventoryStack(containerStack, containedStack);
-			else renderInHandStack(type, containerStack, containedStack);
-		} else {
-			if (type == ItemRenderType.INVENTORY) renderOverload();
-		}
+    @Override
+    public void renderItem(ItemRenderType type, ItemStack containerStack, Object... data) {
+        if (data.length == 0 || !(data[0] instanceof RenderBlocks)) {
+            return;
+        }
 
-		counter.exit();
-	}
+        final Counter counter = this.counter.get();
+        if (counter.enter() < ItemDevNull.STACK_LIMIT) {
+            ItemInventory inv = new ItemInventory(containerStack, 1);
+            ItemStack containedStack = inv.getStackInSlot(0);
 
-	private static void renderOverload() {
-		RenderUtils.disableLightmap();
-		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-		GL11.glEnable(GL12.GL_RESCALE_NORMAL);
-		TextureUtils.bindDefaultItemsTexture();
-		itemRenderer.renderIcon(0, 0, Icons.iconOverload, 16, 16);
-	}
+            if (type == ItemRenderType.INVENTORY) renderInventoryStack(containerStack, containedStack);
+            else renderInHandStack(type, containerStack, containedStack);
+        } else {
+            if (type == ItemRenderType.INVENTORY) renderOverload();
+        }
 
-	protected void renderInHandStack(ItemRenderType type, ItemStack containerStack, ItemStack containedStack) {
-		GL11.glPushMatrix();
+        counter.exit();
+    }
 
-		if (type == ItemRenderType.ENTITY) {
-			GL11.glTranslated(-0.25, -0.25, -0.25);
-			GL11.glScaled(0.5, 0.5, 0.5);
-			RenderUtils.disableLightmap();
-		}
+    private static void renderOverload() {
+        RenderUtils.disableLightmap();
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+        TextureUtils.bindDefaultItemsTexture();
+        itemRenderer.renderIcon(0, 0, Icons.iconOverload, 16, 16);
+    }
 
-		TextureUtils.bindDefaultItemsTexture();
-		cube.render();
+    protected void renderInHandStack(ItemRenderType type, ItemStack containerStack, ItemStack containedStack) {
+        GL11.glPushMatrix();
 
-		if (type == ItemRenderType.ENTITY) {
-			RenderUtils.enableLightmap();
-		}
+        if (type == ItemRenderType.ENTITY) {
+            GL11.glTranslated(-0.25, -0.25, -0.25);
+            GL11.glScaled(0.5, 0.5, 0.5);
+            RenderUtils.disableLightmap();
+        }
 
-		if (containedStack != null && (containedStack.getItem() instanceof ItemBlock)) {
-			GL11.glTranslated(0.5, 0.5, 0.5);
-			GL11.glScalef(0.8f, 0.8f, 0.8f);
-			Minecraft mc = Minecraft.getMinecraft();
-			RenderManager.instance.itemRenderer.renderItem(mc.thePlayer, containedStack, 0, ItemRenderType.EQUIPPED);
-		}
+        TextureUtils.bindDefaultItemsTexture();
+        cube.render();
 
-		GL11.glPopMatrix();
-	}
+        if (type == ItemRenderType.ENTITY) {
+            RenderUtils.enableLightmap();
+        }
 
-	private static void renderInventoryStack(ItemStack containerStack, ItemStack containedStack) {
-		Minecraft mc = Minecraft.getMinecraft();
-		TextureManager textureManager = mc.getTextureManager();
-		FontRenderer fontRenderer = RenderManager.instance.getFontRenderer();
+        if (containedStack != null && (containedStack.getItem() instanceof ItemBlock)) {
+            GL11.glTranslated(0.5, 0.5, 0.5);
+            GL11.glScalef(0.8f, 0.8f, 0.8f);
+            Minecraft mc = Minecraft.getMinecraft();
+            RenderManager.instance.itemRenderer.renderItem(mc.thePlayer, containedStack, 0, ItemRenderType.EQUIPPED);
+        }
 
-		RenderUtils.disableLightmap();
-		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-		GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+        GL11.glPopMatrix();
+    }
 
-		TextureUtils.bindDefaultItemsTexture();
-		itemRenderer.renderIcon(0, 0, Icons.iconTransparent, 16, 16);
+    private static void renderInventoryStack(ItemStack containerStack, ItemStack containedStack) {
+        Minecraft mc = Minecraft.getMinecraft();
+        TextureManager textureManager = mc.getTextureManager();
+        FontRenderer fontRenderer = RenderManager.instance.getFontRenderer();
 
-		if (fontRenderer != null && containedStack != null) {
-			GL11.glPushMatrix();
-			RenderHelper.enableGUIStandardItemLighting();
-			GL11.glScalef(14.0f / 16.0f, 14.0f / 16.0f, 1);
-			itemRenderer.renderItemAndEffectIntoGUI(fontRenderer, textureManager, containedStack, 1, 1);
-			GL11.glPopMatrix();
-			final String sizeToRender = (containedStack.stackSize > 1)? Integer.toString(containedStack.stackSize) : "";
-			itemRenderer.renderItemOverlayIntoGUI(fontRenderer, textureManager, containedStack, 0, 0, sizeToRender);
-		}
-	}
+        RenderUtils.disableLightmap();
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+
+        TextureUtils.bindDefaultItemsTexture();
+        itemRenderer.renderIcon(0, 0, Icons.iconTransparent, 16, 16);
+
+        if (fontRenderer != null && containedStack != null) {
+            GL11.glPushMatrix();
+            RenderHelper.enableGUIStandardItemLighting();
+            GL11.glScalef(14.0f / 16.0f, 14.0f / 16.0f, 1);
+            itemRenderer.renderItemAndEffectIntoGUI(fontRenderer, textureManager, containedStack, 1, 1);
+            GL11.glPopMatrix();
+            final String sizeToRender = (containedStack.stackSize > 1) ? Integer.toString(containedStack.stackSize)
+                    : "";
+            itemRenderer.renderItemOverlayIntoGUI(fontRenderer, textureManager, containedStack, 0, 0, sizeToRender);
+        }
+    }
 }

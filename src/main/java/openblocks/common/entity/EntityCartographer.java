@@ -1,13 +1,11 @@
 package openblocks.common.entity;
 
-import com.google.common.collect.ImmutableSet;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Random;
 import java.util.Set;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
@@ -15,6 +13,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
+
 import openblocks.OpenBlocks.Items;
 import openblocks.client.renderer.entity.EntitySelectionHandler.ISelectAware;
 import openblocks.common.MapDataBuilder;
@@ -35,273 +34,279 @@ import openmods.utils.BitSet;
 import openmods.utils.ByteUtils;
 import openmods.utils.ItemUtils;
 
+import com.google.common.collect.ImmutableSet;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+
 @VisibleForDocumentation
 public class EntityCartographer extends EntityAssistant implements ISelectAware, ISyncMapProvider {
 
-	private static final int MAP_JOB_DELAY = 5;
-	private static final int MOVE_DELAY = 35;
+    private static final int MAP_JOB_DELAY = 5;
+    private static final int MOVE_DELAY = 35;
 
-	public static final Random RANDOM = new Random();
+    public static final Random RANDOM = new Random();
 
-	@SideOnly(Side.CLIENT)
-	public float eyeYaw, eyePitch, targetYaw, targetPitch;
+    @SideOnly(Side.CLIENT)
+    public float eyeYaw, eyePitch, targetYaw, targetPitch;
 
-	public static class MapJobs extends SyncableObjectBase {
-		private BitSet bits = new BitSet();
-		private Set<ChunkJob> jobs;
-		private int size;
+    public static class MapJobs extends SyncableObjectBase {
 
-		public boolean test(int bit) {
-			return bits.testBit(bit);
-		}
+        private BitSet bits = new BitSet();
+        private Set<ChunkJob> jobs;
+        private int size;
 
-		@Override
-		public void readFromStream(DataInputStream input) throws IOException {
-			size = ByteUtils.readVLI(input);
-			bits.readFromStream(input);
-		}
+        public boolean test(int bit) {
+            return bits.testBit(bit);
+        }
 
-		@Override
-		public void writeToStream(DataOutputStream output) throws IOException {
-			ByteUtils.writeVLI(output, size);
-			bits.writeToStream(output);
-		}
+        @Override
+        public void readFromStream(DataInputStream input) throws IOException {
+            size = ByteUtils.readVLI(input);
+            bits.readFromStream(input);
+        }
 
-		@Override
-		public void writeToNBT(NBTTagCompound tag, String name) {
-			NBTTagCompound result = new NBTTagCompound();
-			bits.writeToNBT(result);
-			tag.setTag(name, result);
-		}
+        @Override
+        public void writeToStream(DataOutputStream output) throws IOException {
+            ByteUtils.writeVLI(output, size);
+            bits.writeToStream(output);
+        }
 
-		@Override
-		public void readFromNBT(NBTTagCompound tag, String name) {
-			NBTTagCompound info = tag.getCompoundTag(name);
-			bits.readFromNBT(info);
-		}
+        @Override
+        public void writeToNBT(NBTTagCompound tag, String name) {
+            NBTTagCompound result = new NBTTagCompound();
+            bits.writeToNBT(result);
+            tag.setTag(name, result);
+        }
 
-		public void runJob(World world, int x, int z) {
-			if (jobs == null) {
-				Log.severe("STOP ABUSING CARTOGRAPHER RIGHT NOW! YOU BROKE IT!");
-				jobs = ImmutableSet.of();
-			}
-			ChunkJob job = MapDataBuilder.doNextChunk(world, x, z, jobs);
-			if (job != null) {
-				jobs.remove(job);
-				bits.setBit(job.bitNum);
-				markDirty();
-			}
-		}
+        @Override
+        public void readFromNBT(NBTTagCompound tag, String name) {
+            NBTTagCompound info = tag.getCompoundTag(name);
+            bits.readFromNBT(info);
+        }
 
-		public void resumeMapping(World world, int mapId) {
-			MapDataBuilder builder = new MapDataBuilder(mapId);
+        public void runJob(World world, int x, int z) {
+            if (jobs == null) {
+                Log.severe("STOP ABUSING CARTOGRAPHER RIGHT NOW! YOU BROKE IT!");
+                jobs = ImmutableSet.of();
+            }
+            ChunkJob job = MapDataBuilder.doNextChunk(world, x, z, jobs);
+            if (job != null) {
+                jobs.remove(job);
+                bits.setBit(job.bitNum);
+                markDirty();
+            }
+        }
 
-			builder.loadMap(world);
-			builder.resizeIfNeeded(bits); // better to lost progress than to break world
+        public void resumeMapping(World world, int mapId) {
+            MapDataBuilder builder = new MapDataBuilder(mapId);
 
-			size = builder.size();
-			jobs = builder.createJobs(bits);
-			markDirty();
-		}
+            builder.loadMap(world);
+            builder.resizeIfNeeded(bits); // better to lost progress than to break world
 
-		public void startMapping(World world, int mapId, int x, int z) {
-			MapDataBuilder builder = new MapDataBuilder(mapId);
+            size = builder.size();
+            jobs = builder.createJobs(bits);
+            markDirty();
+        }
 
-			builder.resetMap(world, x, z);
-			builder.resize(bits);
+        public void startMapping(World world, int mapId, int x, int z) {
+            MapDataBuilder builder = new MapDataBuilder(mapId);
 
-			size = builder.size();
-			jobs = builder.createJobs(bits);
-			markDirty();
-		}
+            builder.resetMap(world, x, z);
+            builder.resize(bits);
 
-		public void stopMapping() {
-			jobs.clear();
-			bits.resize(0);
-			size = 0;
-			markDirty();
-		}
+            size = builder.size();
+            jobs = builder.createJobs(bits);
+            markDirty();
+        }
 
-		public int size() {
-			return size;
-		}
-	}
+        public void stopMapping() {
+            jobs.clear();
+            bits.resize(0);
+            size = 0;
+            markDirty();
+        }
 
-	public final SyncableInt scale = new SyncableInt(2);
-	public final SyncableBoolean isMapping = new SyncableBoolean(false);
-	public final MapJobs jobs = new MapJobs();
+        public int size() {
+            return size;
+        }
+    }
 
-	private ItemStack mapItem;
-	private int mappingDimension;
+    public final SyncableInt scale = new SyncableInt(2);
+    public final SyncableBoolean isMapping = new SyncableBoolean(false);
+    public final MapJobs jobs = new MapJobs();
 
-	private int countdownToAction = MAP_JOB_DELAY;
-	private int countdownToMove = MOVE_DELAY;
-	private float randomDelta;
+    private ItemStack mapItem;
+    private int mappingDimension;
 
-	private final SyncMapEntity<EntityCartographer> syncMap = new SyncMapEntity<EntityCartographer>(this);
+    private int countdownToAction = MAP_JOB_DELAY;
+    private int countdownToMove = MOVE_DELAY;
+    private float randomDelta;
 
-	{
-		SyncObjectScanner.INSTANCE.registerAllFields(syncMap, this);
-		setSize(0.2f, 0.2f);
-	}
+    private final SyncMapEntity<EntityCartographer> syncMap = new SyncMapEntity<EntityCartographer>(this);
 
-	public EntityCartographer(World world) {
-		super(world, null);
-	}
+    {
+        SyncObjectScanner.INSTANCE.registerAllFields(syncMap, this);
+        setSize(0.2f, 0.2f);
+    }
 
-	public EntityCartographer(World world, EntityPlayer owner, ItemStack stack) {
-		super(world, owner);
-		setSpawnPosition(owner);
+    public EntityCartographer(World world) {
+        super(world, null);
+    }
 
-		NBTTagCompound tag = ItemUtils.getItemTag(stack);
-		readOwnDataFromNBT(tag);
-	}
+    public EntityCartographer(World world, EntityPlayer owner, ItemStack stack) {
+        super(world, owner);
+        setSpawnPosition(owner);
 
-	@Override
-	protected void entityInit() {}
+        NBTTagCompound tag = ItemUtils.getItemTag(stack);
+        readOwnDataFromNBT(tag);
+    }
 
-	@Override
-	public void onUpdate() {
-		if (!worldObj.isRemote) {
-			float yaw = 0;
-			if (isMapping.get()) {
-				if (countdownToMove-- <= 0) {
-					countdownToMove = MOVE_DELAY;
-					randomDelta = 2 * (float)Math.PI * RANDOM.nextFloat();
-				}
-				yaw = randomDelta;
-			} else {
-				EntityPlayer owner = findOwner();
-				if (owner != null) yaw = (float)Math.toRadians(owner.rotationYaw);
+    @Override
+    protected void entityInit() {}
 
-			}
-			ownerOffsetX = MathHelper.sin(-yaw);
-			ownerOffsetZ = MathHelper.cos(-yaw);
-		}
+    @Override
+    public void onUpdate() {
+        if (!worldObj.isRemote) {
+            float yaw = 0;
+            if (isMapping.get()) {
+                if (countdownToMove-- <= 0) {
+                    countdownToMove = MOVE_DELAY;
+                    randomDelta = 2 * (float) Math.PI * RANDOM.nextFloat();
+                }
+                yaw = randomDelta;
+            } else {
+                EntityPlayer owner = findOwner();
+                if (owner != null) yaw = (float) Math.toRadians(owner.rotationYaw);
 
-		super.onUpdate();
+            }
+            ownerOffsetX = MathHelper.sin(-yaw);
+            ownerOffsetZ = MathHelper.cos(-yaw);
+        }
 
-		if (!worldObj.isRemote) {
-			if (worldObj.provider.dimensionId == mappingDimension && isMapping.get() && countdownToAction-- <= 0) {
-				jobs.runJob(worldObj, (int)posX, (int)posZ);
-				countdownToAction = MAP_JOB_DELAY;
-			}
+        super.onUpdate();
 
-			syncMap.sync();
-		}
-	}
+        if (!worldObj.isRemote) {
+            if (worldObj.provider.dimensionId == mappingDimension && isMapping.get() && countdownToAction-- <= 0) {
+                jobs.runJob(worldObj, (int) posX, (int) posZ);
+                countdownToAction = MAP_JOB_DELAY;
+            }
 
-	@Override
-	protected void readEntityFromNBT(NBTTagCompound tag) {
-		super.readEntityFromNBT(tag);
-		readOwnDataFromNBT(tag);
-	}
+            syncMap.sync();
+        }
+    }
 
-	private void readOwnDataFromNBT(NBTTagCompound tag) {
-		syncMap.readFromNBT(tag);
+    @Override
+    protected void readEntityFromNBT(NBTTagCompound tag) {
+        super.readEntityFromNBT(tag);
+        readOwnDataFromNBT(tag);
+    }
 
-		if (tag.hasKey("MapItem")) {
-			NBTTagCompound mapItem = tag.getCompoundTag("MapItem");
-			this.mapItem = ItemUtils.readStack(mapItem);
+    private void readOwnDataFromNBT(NBTTagCompound tag) {
+        syncMap.readFromNBT(tag);
 
-			if (this.mapItem != null && isMapping.get()) {
-				int mapId = this.mapItem.getItemDamage();
-				jobs.resumeMapping(worldObj, mapId);
-			}
-			mappingDimension = tag.getInteger("Dimension");
-		}
-	}
+        if (tag.hasKey("MapItem")) {
+            NBTTagCompound mapItem = tag.getCompoundTag("MapItem");
+            this.mapItem = ItemUtils.readStack(mapItem);
 
-	@Override
-	protected void writeEntityToNBT(NBTTagCompound tag) {
-		super.writeEntityToNBT(tag);
-		writeOwnDataToNBT(tag);
-	}
+            if (this.mapItem != null && isMapping.get()) {
+                int mapId = this.mapItem.getItemDamage();
+                jobs.resumeMapping(worldObj, mapId);
+            }
+            mappingDimension = tag.getInteger("Dimension");
+        }
+    }
 
-	private void writeOwnDataToNBT(NBTTagCompound tag) {
-		syncMap.writeToNBT(tag);
+    @Override
+    protected void writeEntityToNBT(NBTTagCompound tag) {
+        super.writeEntityToNBT(tag);
+        writeOwnDataToNBT(tag);
+    }
 
-		if (mapItem != null) {
-			NBTTagCompound mapItem = ItemUtils.writeStack(this.mapItem);
-			tag.setTag("MapItem", mapItem);
-			tag.setInteger("Dimension", mappingDimension);
-		}
-	}
+    private void writeOwnDataToNBT(NBTTagCompound tag) {
+        syncMap.writeToNBT(tag);
 
-	@Override
-	public ItemStack toItemStack() {
-		ItemStack result = Items.cartographer.createStack(ItemCartographer.AssistantType.CARTOGRAPHER);
-		NBTTagCompound tag = ItemUtils.getItemTag(result);
-		writeOwnDataToNBT(tag);
-		return result;
-	}
+        if (mapItem != null) {
+            NBTTagCompound mapItem = ItemUtils.writeStack(this.mapItem);
+            tag.setTag("MapItem", mapItem);
+            tag.setInteger("Dimension", mappingDimension);
+        }
+    }
 
-	@Override
-	public boolean interactFirst(EntityPlayer player) {
-		if (player instanceof EntityPlayerMP && player.isSneaking() && getDistanceToEntity(player) < 3) {
-			ItemStack holding = player.getHeldItem();
-			if (holding == null && mapItem != null) {
-				player.setCurrentItemOrArmor(0, mapItem);
-				mapItem = null;
-				isMapping.toggle();
-				jobs.stopMapping();
-			} else if (holding != null && mapItem == null) {
-				Item itemType = holding.getItem();
-				if (itemType instanceof ItemHeightMap || itemType instanceof ItemEmptyMap) {
-					ItemStack inserted = holding.splitStack(1);
+    @Override
+    public ItemStack toItemStack() {
+        ItemStack result = Items.cartographer.createStack(ItemCartographer.AssistantType.CARTOGRAPHER);
+        NBTTagCompound tag = ItemUtils.getItemTag(result);
+        writeOwnDataToNBT(tag);
+        return result;
+    }
 
-					if (holding.stackSize <= 0) player.setCurrentItemOrArmor(0, null);
+    @Override
+    public boolean interactFirst(EntityPlayer player) {
+        if (player instanceof EntityPlayerMP && player.isSneaking() && getDistanceToEntity(player) < 3) {
+            ItemStack holding = player.getHeldItem();
+            if (holding == null && mapItem != null) {
+                player.setCurrentItemOrArmor(0, mapItem);
+                mapItem = null;
+                isMapping.toggle();
+                jobs.stopMapping();
+            } else if (holding != null && mapItem == null) {
+                Item itemType = holding.getItem();
+                if (itemType instanceof ItemHeightMap || itemType instanceof ItemEmptyMap) {
+                    ItemStack inserted = holding.splitStack(1);
 
-					mapItem = inserted;
-					mappingDimension = worldObj.provider.dimensionId;
-					isMapping.toggle();
-					mapItem = MapDataBuilder.upgradeToMap(worldObj, mapItem);
-					int mapId = mapItem.getItemDamage();
-					jobs.startMapping(worldObj, mapId, getNewMapCenterX(), getNewMapCenterZ());
-				}
-			}
+                    if (holding.stackSize <= 0) player.setCurrentItemOrArmor(0, null);
 
-			return true;
-		}
-		return false;
-	}
+                    mapItem = inserted;
+                    mappingDimension = worldObj.provider.dimensionId;
+                    isMapping.toggle();
+                    mapItem = MapDataBuilder.upgradeToMap(worldObj, mapItem);
+                    int mapId = mapItem.getItemDamage();
+                    jobs.startMapping(worldObj, mapId, getNewMapCenterX(), getNewMapCenterZ());
+                }
+            }
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	public boolean canRenderOnFire() {
-		return false;
-	}
+            return true;
+        }
+        return false;
+    }
 
-	@Override
-	public boolean canBeCollidedWith() {
-		return true;
-	}
+    @Override
+    @SideOnly(Side.CLIENT)
+    public boolean canRenderOnFire() {
+        return false;
+    }
 
-	@Override
-	public SyncMap<EntityCartographer> getSyncMap() {
-		return syncMap;
-	}
+    @Override
+    public boolean canBeCollidedWith() {
+        return true;
+    }
 
-	public int getNewMapCenterX() {
-		return ((int)posX) & ~0x0F;
-	}
+    @Override
+    public SyncMap<EntityCartographer> getSyncMap() {
+        return syncMap;
+    }
 
-	public int getNewMapCenterZ() {
-		return ((int)posZ) & ~0x0F;
-	}
+    public int getNewMapCenterX() {
+        return ((int) posX) & ~0x0F;
+    }
 
-	@SideOnly(Side.CLIENT)
-	public void updateEye() {
-		float diffYaw = (targetYaw - eyeYaw) % (float)Math.PI;
-		float diffPitch = (targetPitch - eyePitch) % (float)Math.PI;
+    public int getNewMapCenterZ() {
+        return ((int) posZ) & ~0x0F;
+    }
 
-		if (Math.abs(diffYaw) + Math.abs(diffPitch) < 0.0001) {
-			targetPitch = RANDOM.nextFloat() * 2 * (float)Math.PI;
-			targetYaw = RANDOM.nextFloat() * 2 * (float)Math.PI;
-		} else {
-			// No, it's not supposed to be correct
-			eyeYaw = eyeYaw - diffYaw / 50.0f; // HERP
-			eyePitch = eyePitch - diffPitch / 50.0f; // DERP
-		}
-	}
+    @SideOnly(Side.CLIENT)
+    public void updateEye() {
+        float diffYaw = (targetYaw - eyeYaw) % (float) Math.PI;
+        float diffPitch = (targetPitch - eyePitch) % (float) Math.PI;
+
+        if (Math.abs(diffYaw) + Math.abs(diffPitch) < 0.0001) {
+            targetPitch = RANDOM.nextFloat() * 2 * (float) Math.PI;
+            targetYaw = RANDOM.nextFloat() * 2 * (float) Math.PI;
+        } else {
+            // No, it's not supposed to be correct
+            eyeYaw = eyeYaw - diffYaw / 50.0f; // HERP
+            eyePitch = eyePitch - diffPitch / 50.0f; // DERP
+        }
+    }
 }

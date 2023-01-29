@@ -1,9 +1,7 @@
 package openblocks.common.tileentity;
 
-import com.google.common.base.Preconditions;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import java.util.List;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
@@ -11,293 +9,308 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraftforge.common.util.ForgeDirection;
+
 import openblocks.common.item.ItemImaginary;
 import openblocks.common.item.ItemImaginationGlasses;
 import openmods.OpenMods;
 import openmods.api.ICustomPickItem;
 import openmods.tileentity.SimpleNetTileEntity;
 
+import com.google.common.base.Preconditions;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+
 public class TileEntityImaginary extends SimpleNetTileEntity implements ICustomPickItem {
 
-	public static final double PANEL_HEIGHT = 0.1;
+    public static final double PANEL_HEIGHT = 0.1;
 
-	public enum Property {
-		VISIBLE,
-		SELECTABLE,
-		SOLID
-	}
+    public enum Property {
+        VISIBLE,
+        SELECTABLE,
+        SOLID
+    }
 
-	private enum CollisionType {
-		BLOCK {
-			@Override
-			public ICollisionData createData() {
-				return DUMMY;
-			}
-		},
-		PANEL {
-			@Override
-			public ICollisionData createData() {
-				return new PanelData();
-			}
-		},
-		STAIRS {
-			@Override
-			public ICollisionData createData() {
-				return new StairsData();
-			}
-		};
+    private enum CollisionType {
 
-		public abstract ICollisionData createData();
+        BLOCK {
 
-		public final static CollisionType[] VALUES = values();
-	}
+            @Override
+            public ICollisionData createData() {
+                return DUMMY;
+            }
+        },
+        PANEL {
 
-	public interface ICollisionData {
-		public CollisionType getType();
+            @Override
+            public ICollisionData createData() {
+                return new PanelData();
+            }
+        },
+        STAIRS {
 
-		public void readFromNBT(NBTTagCompound tag);
+            @Override
+            public ICollisionData createData() {
+                return new StairsData();
+            }
+        };
 
-		public void writeToNBT(NBTTagCompound tag);
+        public abstract ICollisionData createData();
 
-		public void addCollisions(int x, int y, int z, AxisAlignedBB region, List<AxisAlignedBB> result);
+        public final static CollisionType[] VALUES = values();
+    }
 
-		public AxisAlignedBB getBlockBounds();
-	}
+    public interface ICollisionData {
 
-	public final static ICollisionData DUMMY = new ICollisionData() {
+        public CollisionType getType();
 
-		@Override
-		public void readFromNBT(NBTTagCompound tag) {}
+        public void readFromNBT(NBTTagCompound tag);
 
-		@Override
-		public void writeToNBT(NBTTagCompound tag) {}
+        public void writeToNBT(NBTTagCompound tag);
 
-		@Override
-		public CollisionType getType() {
-			return CollisionType.BLOCK;
-		}
+        public void addCollisions(int x, int y, int z, AxisAlignedBB region, List<AxisAlignedBB> result);
 
-		@Override
-		public void addCollisions(int x, int y, int z, AxisAlignedBB region, List<AxisAlignedBB> result) {
-			AxisAlignedBB aabb = AxisAlignedBB.getBoundingBox(x, y, z, x + 1, y + 1, z + 1);
-			if (aabb != null && aabb.intersectsWith(region)) result.add(aabb);
-		}
+        public AxisAlignedBB getBlockBounds();
+    }
 
-		@Override
-		public AxisAlignedBB getBlockBounds() {
-			return AxisAlignedBB.getBoundingBox(0, 0, 0, 1, 1, 1);
-		}
-	};
+    public final static ICollisionData DUMMY = new ICollisionData() {
 
-	public static class PanelData implements ICollisionData {
-		public float height;
+        @Override
+        public void readFromNBT(NBTTagCompound tag) {}
 
-		public PanelData() {}
+        @Override
+        public void writeToNBT(NBTTagCompound tag) {}
 
-		public PanelData(float height) {
-			this.height = height;
-		}
+        @Override
+        public CollisionType getType() {
+            return CollisionType.BLOCK;
+        }
 
-		@Override
-		public void readFromNBT(NBTTagCompound tag) {
-			height = tag.getFloat("PanelHeight");
-		}
+        @Override
+        public void addCollisions(int x, int y, int z, AxisAlignedBB region, List<AxisAlignedBB> result) {
+            AxisAlignedBB aabb = AxisAlignedBB.getBoundingBox(x, y, z, x + 1, y + 1, z + 1);
+            if (aabb != null && aabb.intersectsWith(region)) result.add(aabb);
+        }
 
-		@Override
-		public void writeToNBT(NBTTagCompound tag) {
-			tag.setFloat("PanelHeight", height);
-		}
+        @Override
+        public AxisAlignedBB getBlockBounds() {
+            return AxisAlignedBB.getBoundingBox(0, 0, 0, 1, 1, 1);
+        }
+    };
 
-		@Override
-		public CollisionType getType() {
-			return CollisionType.PANEL;
-		}
+    public static class PanelData implements ICollisionData {
 
-		@Override
-		public void addCollisions(int x, int y, int z, AxisAlignedBB region, List<AxisAlignedBB> result) {
-			AxisAlignedBB aabb = AxisAlignedBB.getBoundingBox(x, y + height - PANEL_HEIGHT, z, x + 1, y + height, z + 1);
-			if (aabb != null && aabb.intersectsWith(region)) result.add(aabb);
-		}
+        public float height;
 
-		@Override
-		public AxisAlignedBB getBlockBounds() {
-			return AxisAlignedBB.getBoundingBox(0, height - PANEL_HEIGHT, 0, 1, height, 1);
-		}
-	}
+        public PanelData() {}
 
-	public static class StairsData implements ICollisionData {
-		public float lowerPanelHeight;
-		public float upperPanelHeight;
-		public ForgeDirection orientation;
+        public PanelData(float height) {
+            this.height = height;
+        }
 
-		public StairsData() {}
+        @Override
+        public void readFromNBT(NBTTagCompound tag) {
+            height = tag.getFloat("PanelHeight");
+        }
 
-		public StairsData(float lowerPanelHeight, float upperPanelHeight, ForgeDirection orientation) {
-			this.lowerPanelHeight = lowerPanelHeight;
-			this.upperPanelHeight = upperPanelHeight;
-			this.orientation = orientation;
-		}
+        @Override
+        public void writeToNBT(NBTTagCompound tag) {
+            tag.setFloat("PanelHeight", height);
+        }
 
-		@Override
-		public void readFromNBT(NBTTagCompound tag) {
-			lowerPanelHeight = tag.getFloat("LowerPanelHeight");
-			upperPanelHeight = tag.getFloat("UpperPanelHeight");
-			orientation = ForgeDirection.getOrientation(tag.getByte("Orientation"));
-		}
+        @Override
+        public CollisionType getType() {
+            return CollisionType.PANEL;
+        }
 
-		@Override
-		public void writeToNBT(NBTTagCompound tag) {
-			tag.setFloat("LowerPanelHeight", lowerPanelHeight);
-			tag.setFloat("UpperPanelHeight", upperPanelHeight);
-			tag.setByte("Orientation", (byte)orientation.ordinal());
-		}
+        @Override
+        public void addCollisions(int x, int y, int z, AxisAlignedBB region, List<AxisAlignedBB> result) {
+            AxisAlignedBB aabb = AxisAlignedBB
+                    .getBoundingBox(x, y + height - PANEL_HEIGHT, z, x + 1, y + height, z + 1);
+            if (aabb != null && aabb.intersectsWith(region)) result.add(aabb);
+        }
 
-		@Override
-		public CollisionType getType() {
-			return CollisionType.STAIRS;
-		}
+        @Override
+        public AxisAlignedBB getBlockBounds() {
+            return AxisAlignedBB.getBoundingBox(0, height - PANEL_HEIGHT, 0, 1, height, 1);
+        }
+    }
 
-		@Override
-		public void addCollisions(int x, int y, int z, AxisAlignedBB region, List<AxisAlignedBB> result) {
-			AxisAlignedBB lower;
-			AxisAlignedBB upper;
+    public static class StairsData implements ICollisionData {
 
-			final double lowerTop = y + lowerPanelHeight;
-			final double lowerBottom = lowerTop - PANEL_HEIGHT;
+        public float lowerPanelHeight;
+        public float upperPanelHeight;
+        public ForgeDirection orientation;
 
-			final double upperTop = y + upperPanelHeight;
-			final double upperBottom = upperTop - PANEL_HEIGHT;
+        public StairsData() {}
 
-			switch (orientation) {
-				case NORTH:
-					lower = AxisAlignedBB.getBoundingBox(x, lowerBottom, z + 0.5, x + 1, lowerTop, z + 1.0);
-					upper = AxisAlignedBB.getBoundingBox(x, upperBottom, z + 0.0, x + 1, upperTop, z + 0.5);
-					break;
-				case SOUTH:
-					lower = AxisAlignedBB.getBoundingBox(x, lowerBottom, z + 0.0, x + 1, lowerTop, z + 0.5);
-					upper = AxisAlignedBB.getBoundingBox(x, upperBottom, z + 0.5, x + 1, upperTop, z + 1.0);
-					break;
-				case WEST:
-					lower = AxisAlignedBB.getBoundingBox(x + 0.5, lowerBottom, z, x + 1.0, lowerTop, z + 1);
-					upper = AxisAlignedBB.getBoundingBox(x + 0.0, upperBottom, z, x + 0.5, upperTop, z + 1);
-					break;
-				case EAST:
-					lower = AxisAlignedBB.getBoundingBox(x + 0.0, lowerBottom, z, x + 0.5, lowerTop, z + 1);
-					upper = AxisAlignedBB.getBoundingBox(x + 0.5, upperBottom, z, x + 1.0, upperTop, z + 1);
-					break;
-				default:
-					lower = upper = null;
-					break;
-			}
+        public StairsData(float lowerPanelHeight, float upperPanelHeight, ForgeDirection orientation) {
+            this.lowerPanelHeight = lowerPanelHeight;
+            this.upperPanelHeight = upperPanelHeight;
+            this.orientation = orientation;
+        }
 
-			if (lower != null && lower.intersectsWith(region)) result.add(lower);
-			if (upper != null && upper.intersectsWith(region)) result.add(upper);
-		}
+        @Override
+        public void readFromNBT(NBTTagCompound tag) {
+            lowerPanelHeight = tag.getFloat("LowerPanelHeight");
+            upperPanelHeight = tag.getFloat("UpperPanelHeight");
+            orientation = ForgeDirection.getOrientation(tag.getByte("Orientation"));
+        }
 
-		@Override
-		public AxisAlignedBB getBlockBounds() {
-			return AxisAlignedBB.getBoundingBox(0, lowerPanelHeight, 0, 1, upperPanelHeight, 1);
-		}
-	}
+        @Override
+        public void writeToNBT(NBTTagCompound tag) {
+            tag.setFloat("LowerPanelHeight", lowerPanelHeight);
+            tag.setFloat("UpperPanelHeight", upperPanelHeight);
+            tag.setByte("Orientation", (byte) orientation.ordinal());
+        }
 
-	@SideOnly(Side.CLIENT)
-	public float visibility;
+        @Override
+        public CollisionType getType() {
+            return CollisionType.STAIRS;
+        }
 
-	public TileEntityImaginary() {
-		collisionData = DUMMY;
-	}
+        @Override
+        public void addCollisions(int x, int y, int z, AxisAlignedBB region, List<AxisAlignedBB> result) {
+            AxisAlignedBB lower;
+            AxisAlignedBB upper;
 
-	public TileEntityImaginary(Integer color, boolean isInverted, ICollisionData collisionData) {
-		Preconditions.checkNotNull(collisionData, "Bad idea! Rejected!");
-		this.color = color;
-		this.isInverted = isInverted;
-		this.collisionData = collisionData;
-	}
+            final double lowerTop = y + lowerPanelHeight;
+            final double lowerBottom = lowerTop - PANEL_HEIGHT;
 
-	public Integer color;
-	public boolean isInverted;
-	public ICollisionData collisionData;
+            final double upperTop = y + upperPanelHeight;
+            final double upperBottom = upperTop - PANEL_HEIGHT;
 
-	@Override
-	public void readFromNBT(NBTTagCompound tag) {
-		super.readFromNBT(tag);
-		color = tag.hasKey("Color")? tag.getInteger("Color") : null;
-		isInverted = tag.getBoolean("IsInverted");
-		CollisionType type = CollisionType.VALUES[tag.getByte("Type")];
-		collisionData = type.createData();
-		collisionData.readFromNBT(tag);
-	}
+            switch (orientation) {
+                case NORTH:
+                    lower = AxisAlignedBB.getBoundingBox(x, lowerBottom, z + 0.5, x + 1, lowerTop, z + 1.0);
+                    upper = AxisAlignedBB.getBoundingBox(x, upperBottom, z + 0.0, x + 1, upperTop, z + 0.5);
+                    break;
+                case SOUTH:
+                    lower = AxisAlignedBB.getBoundingBox(x, lowerBottom, z + 0.0, x + 1, lowerTop, z + 0.5);
+                    upper = AxisAlignedBB.getBoundingBox(x, upperBottom, z + 0.5, x + 1, upperTop, z + 1.0);
+                    break;
+                case WEST:
+                    lower = AxisAlignedBB.getBoundingBox(x + 0.5, lowerBottom, z, x + 1.0, lowerTop, z + 1);
+                    upper = AxisAlignedBB.getBoundingBox(x + 0.0, upperBottom, z, x + 0.5, upperTop, z + 1);
+                    break;
+                case EAST:
+                    lower = AxisAlignedBB.getBoundingBox(x + 0.0, lowerBottom, z, x + 0.5, lowerTop, z + 1);
+                    upper = AxisAlignedBB.getBoundingBox(x + 0.5, upperBottom, z, x + 1.0, upperTop, z + 1);
+                    break;
+                default:
+                    lower = upper = null;
+                    break;
+            }
 
-	@Override
-	public void writeToNBT(NBTTagCompound tag) {
-		super.writeToNBT(tag);
+            if (lower != null && lower.intersectsWith(region)) result.add(lower);
+            if (upper != null && upper.intersectsWith(region)) result.add(upper);
+        }
 
-		if (color != null) tag.setInteger("Color", color);
-		tag.setBoolean("IsInverted", isInverted);
-		tag.setByte("Type", (byte)collisionData.getType().ordinal());
-		collisionData.writeToNBT(tag);
-	}
+        @Override
+        public AxisAlignedBB getBlockBounds() {
+            return AxisAlignedBB.getBoundingBox(0, lowerPanelHeight, 0, 1, upperPanelHeight, 1);
+        }
+    }
 
-	@Override
-	public boolean canUpdate() {
-		return false;
-	}
+    @SideOnly(Side.CLIENT)
+    public float visibility;
 
-	@Override
-	public boolean shouldRenderInPass(int pass) {
-		return pass == 1;
-	}
+    public TileEntityImaginary() {
+        collisionData = DUMMY;
+    }
 
-	public boolean isPencil() {
-		return color == null;
-	}
+    public TileEntityImaginary(Integer color, boolean isInverted, ICollisionData collisionData) {
+        Preconditions.checkNotNull(collisionData, "Bad idea! Rejected!");
+        this.color = color;
+        this.isInverted = isInverted;
+        this.collisionData = collisionData;
+    }
 
-	public boolean isInverted() {
-		return isInverted;
-	}
+    public Integer color;
+    public boolean isInverted;
+    public ICollisionData collisionData;
 
-	public boolean is(Property what, EntityPlayer player) {
-		if (what == Property.SOLID && isPencil()) return true;
+    @Override
+    public void readFromNBT(NBTTagCompound tag) {
+        super.readFromNBT(tag);
+        color = tag.hasKey("Color") ? tag.getInteger("Color") : null;
+        isInverted = tag.getBoolean("IsInverted");
+        CollisionType type = CollisionType.VALUES[tag.getByte("Type")];
+        collisionData = type.createData();
+        collisionData.readFromNBT(tag);
+    }
 
-		ItemStack helmet = player.inventory.armorItemInSlot(3);
+    @Override
+    public void writeToNBT(NBTTagCompound tag) {
+        super.writeToNBT(tag);
 
-		if (helmet == null) return isInverted();
+        if (color != null) tag.setInteger("Color", color);
+        tag.setBoolean("IsInverted", isInverted);
+        tag.setByte("Type", (byte) collisionData.getType().ordinal());
+        collisionData.writeToNBT(tag);
+    }
 
-		Item item = helmet.getItem();
+    @Override
+    public boolean canUpdate() {
+        return false;
+    }
 
-		if (item instanceof ItemImaginationGlasses) return ((ItemImaginationGlasses)item).checkBlock(what, helmet, this);
+    @Override
+    public boolean shouldRenderInPass(int pass) {
+        return pass == 1;
+    }
 
-		return isInverted();
-	}
+    public boolean isPencil() {
+        return color == null;
+    }
 
-	public boolean is(EntityPlayer player) {
-		return player.getHeldItem() != null;
-	}
+    public boolean isInverted() {
+        return isInverted;
+    }
 
-	public boolean is(Property what, Entity e) {
-		return (e instanceof EntityPlayer) && is(what, (EntityPlayer)e);
-	}
+    public boolean is(Property what, EntityPlayer player) {
+        if (what == Property.SOLID && isPencil()) return true;
 
-	public boolean is(Property what) {
-		EntityPlayer player = OpenMods.proxy.getThePlayer();
-		return player != null && is(what, player);
-	}
+        ItemStack helmet = player.inventory.armorItemInSlot(3);
 
-	public void addCollisions(AxisAlignedBB region, List<AxisAlignedBB> result) {
-		collisionData.addCollisions(xCoord, yCoord, zCoord, region, result);
-	}
+        if (helmet == null) return isInverted();
 
-	public AxisAlignedBB getSelectionBox() {
-		return collisionData.getBlockBounds().offset(xCoord, yCoord, zCoord);
-	}
+        Item item = helmet.getItem();
 
-	public AxisAlignedBB getBlockBounds() {
-		return collisionData.getBlockBounds();
-	}
+        if (item instanceof ItemImaginationGlasses)
+            return ((ItemImaginationGlasses) item).checkBlock(what, helmet, this);
 
-	@Override
-	public ItemStack getPickBlock() {
-		int dmg = isPencil()? ItemImaginary.DAMAGE_PENCIL : ItemImaginary.DAMAGE_CRAYON;
-		return ItemImaginary.setupValues(color, new ItemStack(getBlockType(), 1, dmg));
-	}
+        return isInverted();
+    }
+
+    public boolean is(EntityPlayer player) {
+        return player.getHeldItem() != null;
+    }
+
+    public boolean is(Property what, Entity e) {
+        return (e instanceof EntityPlayer) && is(what, (EntityPlayer) e);
+    }
+
+    public boolean is(Property what) {
+        EntityPlayer player = OpenMods.proxy.getThePlayer();
+        return player != null && is(what, player);
+    }
+
+    public void addCollisions(AxisAlignedBB region, List<AxisAlignedBB> result) {
+        collisionData.addCollisions(xCoord, yCoord, zCoord, region, result);
+    }
+
+    public AxisAlignedBB getSelectionBox() {
+        return collisionData.getBlockBounds().offset(xCoord, yCoord, zCoord);
+    }
+
+    public AxisAlignedBB getBlockBounds() {
+        return collisionData.getBlockBounds();
+    }
+
+    @Override
+    public ItemStack getPickBlock() {
+        int dmg = isPencil() ? ItemImaginary.DAMAGE_PENCIL : ItemImaginary.DAMAGE_CRAYON;
+        return ItemImaginary.setupValues(color, new ItemStack(getBlockType(), 1, dmg));
+    }
 }

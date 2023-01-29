@@ -4,14 +4,14 @@ import java.util.List;
 
 public interface IFlimFlamRegistry extends IApiInterface {
 
-	public List<String> getAllFlimFlamsNames();
+    public List<String> getAllFlimFlamsNames();
 
-	public IFlimFlamDescription getFlimFlamByName(String name);
+    public IFlimFlamDescription getFlimFlamByName(String name);
 
-	public List<IFlimFlamDescription> getFlimFlams();
+    public List<IFlimFlamDescription> getFlimFlams();
 
-	public void registerFlimFlam(String name, IFlimFlamDescription meta);
+    public void registerFlimFlam(String name, IFlimFlamDescription meta);
 
-	public FlimFlamDescriptionSimple registerFlimFlam(String name, int cost, int weight, IFlimFlamAction effect);
+    public FlimFlamDescriptionSimple registerFlimFlam(String name, int cost, int weight, IFlimFlamAction effect);
 
 }

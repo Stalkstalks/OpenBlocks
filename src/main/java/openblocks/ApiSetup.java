@@ -1,6 +1,5 @@
 package openblocks;
 
-import cpw.mods.fml.common.discovery.ASMDataTable;
 import openblocks.api.ApiHolder;
 import openblocks.api.IApiInterface;
 import openblocks.api.OpenBlocksApi;
@@ -9,44 +8,51 @@ import openmods.Log;
 import openmods.access.ApiFactory;
 import openmods.access.ApiProviderBase;
 import openmods.access.ApiProviderRegistry;
+import cpw.mods.fml.common.discovery.ASMDataTable;
 
 public class ApiSetup {
 
-	private static class ApiProviderAdapter extends ApiProviderBase<IApiInterface> implements openblocks.api.OpenBlocksApi.ApiProvider {
-		public ApiProviderAdapter(ApiProviderRegistry<IApiInterface> apiRegistry) {
-			super(apiRegistry);
-		}
-	}
+    private static class ApiProviderAdapter extends ApiProviderBase<IApiInterface>
+            implements openblocks.api.OpenBlocksApi.ApiProvider {
 
-	private final ApiProviderRegistry<IApiInterface> registry = new ApiProviderRegistry<IApiInterface>(IApiInterface.class);
+        public ApiProviderAdapter(ApiProviderRegistry<IApiInterface> apiRegistry) {
+            super(apiRegistry);
+        }
+    }
 
-	ApiSetup() {}
+    private final ApiProviderRegistry<IApiInterface> registry = new ApiProviderRegistry<IApiInterface>(
+            IApiInterface.class);
 
-	public void setupApis() {
-		registry.registerInstance(FlimFlamRegistry.instance);
-		registry.freeze();
-	}
+    ApiSetup() {}
 
-	public void installHolderAccess(ASMDataTable table) {
-		ApiFactory.instance.createApi(ApiHolder.class, IApiInterface.class, table, registry);
-	}
+    public void setupApis() {
+        registry.registerInstance(FlimFlamRegistry.instance);
+        registry.freeze();
+    }
 
-	void injectProvider() {
-		try {
-			OpenBlocksApi.init(new ApiProviderAdapter(registry));
-		} catch (Throwable t) {
-			final String apiSource = getApiSource();
-			throw new IllegalStateException(String.format("Failed to register OpenBlocks API provider (ApiAccess source: %s)", apiSource), t);
-		}
-	}
+    public void installHolderAccess(ASMDataTable table) {
+        ApiFactory.instance.createApi(ApiHolder.class, IApiInterface.class, table, registry);
+    }
 
-	private static String getApiSource() {
-		try {
-			return openblocks.api.OpenBlocksApi.ApiProvider.class.getProtectionDomain().getCodeSource().getLocation().toString();
-		} catch (Throwable t) {
-			Log.severe(t, "Failed to get OpenBlocks API source");
-			return "<unknown, see logs>";
-		}
-	}
+    void injectProvider() {
+        try {
+            OpenBlocksApi.init(new ApiProviderAdapter(registry));
+        } catch (Throwable t) {
+            final String apiSource = getApiSource();
+            throw new IllegalStateException(
+                    String.format("Failed to register OpenBlocks API provider (ApiAccess source: %s)", apiSource),
+                    t);
+        }
+    }
+
+    private static String getApiSource() {
+        try {
+            return openblocks.api.OpenBlocksApi.ApiProvider.class.getProtectionDomain().getCodeSource().getLocation()
+                    .toString();
+        } catch (Throwable t) {
+            Log.severe(t, "Failed to get OpenBlocks API source");
+            return "<unknown, see logs>";
+        }
+    }
 
 }

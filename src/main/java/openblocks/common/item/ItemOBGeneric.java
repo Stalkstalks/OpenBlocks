@@ -7,8 +7,8 @@ import openmods.item.ItemGeneric;
 @BookDocumentation(customProvider = MetasGeneric.DocProvider.class)
 public class ItemOBGeneric extends ItemGeneric {
 
-	public ItemOBGeneric() {
-		setMaxStackSize(64);
-		setCreativeTab(OpenBlocks.tabOpenBlocks);
-	}
+    public ItemOBGeneric() {
+        setMaxStackSize(64);
+        setCreativeTab(OpenBlocks.tabOpenBlocks);
+    }
 }

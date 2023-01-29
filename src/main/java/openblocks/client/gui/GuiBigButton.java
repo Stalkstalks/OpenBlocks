@@ -5,7 +5,7 @@ import openmods.gui.BaseGuiContainer;
 
 public class GuiBigButton extends BaseGuiContainer<ContainerBigButton> {
 
-	public GuiBigButton(ContainerBigButton container) {
-		super(container, 176, 142, "openblocks.gui.bigbutton");
-	}
+    public GuiBigButton(ContainerBigButton container) {
+        super(container, 176, 142, "openblocks.gui.bigbutton");
+    }
 }

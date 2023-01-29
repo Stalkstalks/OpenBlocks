@@ -5,6 +5,7 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
+
 import openblocks.common.container.ContainerVacuumHopper;
 import openblocks.common.tileentity.TileEntityVacuumHopper;
 import openmods.gui.SyncedGuiContainer;
@@ -20,49 +21,75 @@ import openmods.utils.bitmap.IReadableBitMap;
 import openmods.utils.bitmap.IWriteableBitMap;
 
 public class GuiVacuumHopper extends SyncedGuiContainer<ContainerVacuumHopper> {
-	public GuiVacuumHopper(ContainerVacuumHopper container) {
-		super(container, 176, 151, "openblocks.gui.vacuumhopper");
-	}
 
-	@Override
-	protected BaseComposite createRoot() {
-		final TileEntityVacuumHopper te = getContainer().getOwner();
+    public GuiVacuumHopper(ContainerVacuumHopper container) {
+        super(container, 176, 151, "openblocks.gui.vacuumhopper");
+    }
 
-		BaseComposite main = super.createRoot();
-		final GuiComponentTankLevel tankLevel = new GuiComponentTankLevel(140, 18, 17, 37, TileEntityVacuumHopper.TANK_CAPACITY);
-		addSyncUpdateListener(ValueCopyAction.create(te.getFluidProvider(), tankLevel.fluidReceiver()));
-		main.addComponent(tankLevel);
+    @Override
+    protected BaseComposite createRoot() {
+        final TileEntityVacuumHopper te = getContainer().getOwner();
 
-		GuiComponentTabWrapper tabs = new GuiComponentTabWrapper(0, 0, main);
+        BaseComposite main = super.createRoot();
+        final GuiComponentTankLevel tankLevel = new GuiComponentTankLevel(
+                140,
+                18,
+                17,
+                37,
+                TileEntityVacuumHopper.TANK_CAPACITY);
+        addSyncUpdateListener(ValueCopyAction.create(te.getFluidProvider(), tankLevel.fluidReceiver()));
+        main.addComponent(tankLevel);
 
-		{
-			GuiComponentTab itemTab = new GuiComponentTab(StandardPalette.lightblue.getColor(), new ItemStack(Blocks.chest), 100, 100);
-			final GuiComponentSideSelector sideSelector = new GuiComponentSideSelector(15, 15, 40.0, null, 0, te, false);
-			wireSideSelector(sideSelector, te.getReadableItemOutputs(), te.getWriteableItemOutputs());
+        GuiComponentTabWrapper tabs = new GuiComponentTabWrapper(0, 0, main);
 
-			itemTab.addComponent(new GuiComponentLabel(24, 10, StatCollector.translateToLocal("openblocks.gui.item_outputs")));
-			itemTab.addComponent(sideSelector);
-			tabs.addComponent(itemTab);
-		}
+        {
+            GuiComponentTab itemTab = new GuiComponentTab(
+                    StandardPalette.lightblue.getColor(),
+                    new ItemStack(Blocks.chest),
+                    100,
+                    100);
+            final GuiComponentSideSelector sideSelector = new GuiComponentSideSelector(
+                    15,
+                    15,
+                    40.0,
+                    null,
+                    0,
+                    te,
+                    false);
+            wireSideSelector(sideSelector, te.getReadableItemOutputs(), te.getWriteableItemOutputs());
 
-		{
-			GuiComponentTab xpTab = new GuiComponentTab(StandardPalette.blue.getColor(), new ItemStack(Items.experience_bottle, 1), 100, 100);
-			GuiComponentSideSelector sideSelector = new GuiComponentSideSelector(15, 15, 40.0, null, 0, te, false);
-			wireSideSelector(sideSelector, te.getReadableXpOutputs(), te.getWriteableXpOutputs());
-			xpTab.addComponent(sideSelector);
-			xpTab.addComponent(new GuiComponentLabel(24, 10, StatCollector.translateToLocal("openblocks.gui.xp_outputs")));
-			tabs.addComponent(xpTab);
-		}
+            itemTab.addComponent(
+                    new GuiComponentLabel(24, 10, StatCollector.translateToLocal("openblocks.gui.item_outputs")));
+            itemTab.addComponent(sideSelector);
+            tabs.addComponent(itemTab);
+        }
 
-		return tabs;
-	}
+        {
+            GuiComponentTab xpTab = new GuiComponentTab(
+                    StandardPalette.blue.getColor(),
+                    new ItemStack(Items.experience_bottle, 1),
+                    100,
+                    100);
+            GuiComponentSideSelector sideSelector = new GuiComponentSideSelector(15, 15, 40.0, null, 0, te, false);
+            wireSideSelector(sideSelector, te.getReadableXpOutputs(), te.getWriteableXpOutputs());
+            xpTab.addComponent(sideSelector);
+            xpTab.addComponent(
+                    new GuiComponentLabel(24, 10, StatCollector.translateToLocal("openblocks.gui.xp_outputs")));
+            tabs.addComponent(xpTab);
+        }
 
-	private static void wireSideSelector(final GuiComponentSideSelector sideSelector, final IReadableBitMap<ForgeDirection> readableSides, final IWriteableBitMap<ForgeDirection> writeableSides) {
-		sideSelector.setListener(new ISideSelectedListener() {
-			@Override
-			public void onSideToggled(ForgeDirection side, boolean currentState) {
-				writeableSides.toggle(side);
-			}
-		});
-	}
+        return tabs;
+    }
+
+    private static void wireSideSelector(final GuiComponentSideSelector sideSelector,
+            final IReadableBitMap<ForgeDirection> readableSides,
+            final IWriteableBitMap<ForgeDirection> writeableSides) {
+        sideSelector.setListener(new ISideSelectedListener() {
+
+            @Override
+            public void onSideToggled(ForgeDirection side, boolean currentState) {
+                writeableSides.toggle(side);
+            }
+        });
+    }
 }

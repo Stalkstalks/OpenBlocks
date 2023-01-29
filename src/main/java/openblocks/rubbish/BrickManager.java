@@ -1,6 +1,5 @@
 package openblocks.rubbish;
 
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
@@ -11,104 +10,107 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.IExtendedEntityProperties;
 import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.entity.living.LivingDropsEvent;
+
 import openblocks.OpenBlocks;
 import openblocks.events.PlayerActionEvent;
 import openblocks.events.PlayerActionEvent.Type;
 import openmods.utils.ItemUtils;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 public class BrickManager {
 
-	public static final String BOWELS_PROPERTY = "Bowels";
+    public static final String BOWELS_PROPERTY = "Bowels";
 
-	public static class BowelContents implements IExtendedEntityProperties {
+    public static class BowelContents implements IExtendedEntityProperties {
 
-		public int brickCount;
+        public int brickCount;
 
-		@Override
-		public void saveNBTData(NBTTagCompound entityTag) {
-			entityTag.setInteger("Bricks", brickCount);
-		}
+        @Override
+        public void saveNBTData(NBTTagCompound entityTag) {
+            entityTag.setInteger("Bricks", brickCount);
+        }
 
-		@Override
-		public void loadNBTData(NBTTagCompound entityTag) {
-			brickCount = entityTag.getInteger("Bricks");
-		}
+        @Override
+        public void loadNBTData(NBTTagCompound entityTag) {
+            brickCount = entityTag.getInteger("Bricks");
+        }
 
-		@Override
-		public void init(Entity entity, World world) {}
-	}
+        @Override
+        public void init(Entity entity, World world) {}
+    }
 
-	public static BowelContents getProperty(Entity entity) {
-		IExtendedEntityProperties prop = entity.getExtendedProperties(BOWELS_PROPERTY);
-		return (prop instanceof BowelContents)? (BowelContents)prop : null;
-	}
+    public static BowelContents getProperty(Entity entity) {
+        IExtendedEntityProperties prop = entity.getExtendedProperties(BOWELS_PROPERTY);
+        return (prop instanceof BowelContents) ? (BowelContents) prop : null;
+    }
 
-	@SubscribeEvent
-	public void onEntityConstruct(EntityEvent.EntityConstructing evt) {
-		if (evt.entity instanceof EntityPlayer) evt.entity.registerExtendedProperties(BOWELS_PROPERTY, new BowelContents());
-	}
+    @SubscribeEvent
+    public void onEntityConstruct(EntityEvent.EntityConstructing evt) {
+        if (evt.entity instanceof EntityPlayer)
+            evt.entity.registerExtendedProperties(BOWELS_PROPERTY, new BowelContents());
+    }
 
-	@SubscribeEvent
-	public void onEntityDeath(LivingDropsEvent evt) {
-		if (evt.entity.worldObj.isRemote) return;
-		IExtendedEntityProperties prop = evt.entity.getExtendedProperties(BOWELS_PROPERTY);
+    @SubscribeEvent
+    public void onEntityDeath(LivingDropsEvent evt) {
+        if (evt.entity.worldObj.isRemote) return;
+        IExtendedEntityProperties prop = evt.entity.getExtendedProperties(BOWELS_PROPERTY);
 
-		if (prop instanceof BowelContents) {
-			BowelContents tag = (BowelContents)prop;
+        if (prop instanceof BowelContents) {
+            BowelContents tag = (BowelContents) prop;
 
-			for (int i = 0; i < Math.min(tag.brickCount, 16); i++) {
-				EntityItem entityItem = createBrick(evt.entity);
-				evt.drops.add(entityItem);
-			}
-		}
-	}
+            for (int i = 0; i < Math.min(tag.brickCount, 16); i++) {
+                EntityItem entityItem = createBrick(evt.entity);
+                evt.drops.add(entityItem);
+            }
+        }
+    }
 
-	private static boolean canDropBrick(EntityPlayer player) {
-		if (player.capabilities.isCreativeMode) return true;
+    private static boolean canDropBrick(EntityPlayer player) {
+        if (player.capabilities.isCreativeMode) return true;
 
-		IExtendedEntityProperties prop = player.getExtendedProperties(BOWELS_PROPERTY);
+        IExtendedEntityProperties prop = player.getExtendedProperties(BOWELS_PROPERTY);
 
-		if (prop instanceof BowelContents) {
-			BowelContents tag = (BowelContents)prop;
-			if (tag.brickCount > 0) {
-				tag.brickCount--;
-				return true;
-			}
-		}
+        if (prop instanceof BowelContents) {
+            BowelContents tag = (BowelContents) prop;
+            if (tag.brickCount > 0) {
+                tag.brickCount--;
+                return true;
+            }
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	@SubscribeEvent
-	public void onPlayerScared(PlayerActionEvent evt) {
-		if (evt.type == Type.BOO && evt.sender != null) {
-			final EntityPlayer player = evt.sender;
-			player.worldObj.playSoundAtEntity(player, "openblocks:best.feature.ever.fart", 1, 1);
+    @SubscribeEvent
+    public void onPlayerScared(PlayerActionEvent evt) {
+        if (evt.type == Type.BOO && evt.sender != null) {
+            final EntityPlayer player = evt.sender;
+            player.worldObj.playSoundAtEntity(player, "openblocks:best.feature.ever.fart", 1, 1);
 
-			if (canDropBrick(player)) {
-				EntityItem drop = createBrick(player);
-				drop.delayBeforeCanPickup = 20;
-				player.worldObj.spawnEntityInWorld(drop);
-				player.triggerAchievement(OpenBlocks.brickAchievement);
-				player.addStat(OpenBlocks.brickStat, 1);
-			}
-		}
-	}
+            if (canDropBrick(player)) {
+                EntityItem drop = createBrick(player);
+                drop.delayBeforeCanPickup = 20;
+                player.worldObj.spawnEntityInWorld(drop);
+                player.triggerAchievement(OpenBlocks.brickAchievement);
+                player.addStat(OpenBlocks.brickStat, 1);
+            }
+        }
+    }
 
-	private static EntityItem createBrick(Entity dropper) {
-		ItemStack brick = new ItemStack(Items.brick);
-		EntityItem drop = ItemUtils.createDrop(dropper, brick);
-		double rotation = Math.toRadians(dropper.rotationYaw) - Math.PI / 2;
-		double dx = Math.cos(rotation);
-		double dz = Math.sin(rotation);
+    private static EntityItem createBrick(Entity dropper) {
+        ItemStack brick = new ItemStack(Items.brick);
+        EntityItem drop = ItemUtils.createDrop(dropper, brick);
+        double rotation = Math.toRadians(dropper.rotationYaw) - Math.PI / 2;
+        double dx = Math.cos(rotation);
+        double dz = Math.sin(rotation);
 
-		drop.moveEntity(0.75 * dx, 0.5, 0.75 * dz);
+        drop.moveEntity(0.75 * dx, 0.5, 0.75 * dz);
 
-		drop.motionX = 0.5 * dx;
-		drop.motionY = 0.2;
-		drop.motionZ = 0.5 * dz;
+        drop.motionX = 0.5 * dx;
+        drop.motionY = 0.2;
+        drop.motionZ = 0.5 * dz;
 
-		return drop;
-	}
+        return drop;
+    }
 
 }

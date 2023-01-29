@@ -1,5 +1,6 @@
 package openblocks.integration;
 
 public interface ITickingTurtle {
-	public void onPeripheralTick();
+
+    public void onPeripheralTick();
 }

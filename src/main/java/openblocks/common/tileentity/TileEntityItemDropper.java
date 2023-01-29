@@ -7,6 +7,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.util.ForgeDirection;
+
 import openblocks.client.gui.GuiItemDropper;
 import openblocks.common.container.ContainerItemDropper;
 import openmods.api.IHasGui;
@@ -22,87 +23,90 @@ import openmods.tileentity.OpenTileEntity;
 import openmods.utils.InventoryUtils;
 
 public class TileEntityItemDropper extends OpenTileEntity implements INeighbourAwareTile, IInventoryProvider, IHasGui {
-	static final int BUFFER_SIZE = 9;
 
-	private boolean _redstoneSignal;
+    static final int BUFFER_SIZE = 9;
 
-	private GenericInventory inventory = registerInventoryCallback(new TileEntityInventory(this, "itemDropper", false, 9));
+    private boolean _redstoneSignal;
 
-	public TileEntityItemDropper() {}
+    private GenericInventory inventory = registerInventoryCallback(
+            new TileEntityInventory(this, "itemDropper", false, 9));
 
-	public void setRedstoneSignal(boolean redstoneSignal) {
-		if (redstoneSignal != _redstoneSignal) {
-			_redstoneSignal = redstoneSignal;
-			if (_redstoneSignal && !InventoryUtils.inventoryIsEmpty(inventory)) {
-				dropItem();
-			}
-		}
-	}
+    public TileEntityItemDropper() {}
 
-	private void dropItem() {
-		if (!(worldObj instanceof WorldServer)) return;
+    public void setRedstoneSignal(boolean redstoneSignal) {
+        if (redstoneSignal != _redstoneSignal) {
+            _redstoneSignal = redstoneSignal;
+            if (_redstoneSignal && !InventoryUtils.inventoryIsEmpty(inventory)) {
+                dropItem();
+            }
+        }
+    }
 
-		for (int i = 0; i < inventory.getSizeInventory(); i++) {
-			ItemStack stack = inventory.getStackInSlot(i);
-			if (stack == null || stack.stackSize <= 0) continue;
+    private void dropItem() {
+        if (!(worldObj instanceof WorldServer)) return;
 
-			final ItemStack dropped = stack.splitStack(1);
+        for (int i = 0; i < inventory.getSizeInventory(); i++) {
+            ItemStack stack = inventory.getStackInSlot(i);
+            if (stack == null || stack.stackSize <= 0) continue;
 
-			if (stack.stackSize <= 0) inventory.setInventorySlotContents(i, null);
+            final ItemStack dropped = stack.splitStack(1);
 
-			FakePlayerPool.instance.executeOnPlayer((WorldServer)worldObj, new PlayerUser() {
-				@Override
-				public void usePlayer(OpenModsFakePlayer fakePlayer) {
-					fakePlayer.dropItemAt(dropped, xCoord, yCoord, zCoord, ForgeDirection.DOWN);
-				}
-			});
+            if (stack.stackSize <= 0) inventory.setInventorySlotContents(i, null);
 
-			break;
-		}
-	}
+            FakePlayerPool.instance.executeOnPlayer((WorldServer) worldObj, new PlayerUser() {
 
-	@Override
-	public void onNeighbourChanged(Block block) {
-		if (!worldObj.isRemote) {
-			setRedstoneSignal(worldObj.isBlockIndirectlyGettingPowered(xCoord, yCoord, zCoord));
-		}
-	}
+                @Override
+                public void usePlayer(OpenModsFakePlayer fakePlayer) {
+                    fakePlayer.dropItemAt(dropped, xCoord, yCoord, zCoord, ForgeDirection.DOWN);
+                }
+            });
 
-	@Override
-	public Object getServerGui(EntityPlayer player) {
-		return new ContainerItemDropper(player.inventory, this);
-	}
+            break;
+        }
+    }
 
-	@Override
-	public Object getClientGui(EntityPlayer player) {
-		return new GuiItemDropper(new ContainerItemDropper(player.inventory, this));
-	}
+    @Override
+    public void onNeighbourChanged(Block block) {
+        if (!worldObj.isRemote) {
+            setRedstoneSignal(worldObj.isBlockIndirectlyGettingPowered(xCoord, yCoord, zCoord));
+        }
+    }
 
-	@Override
-	public boolean canOpenGui(EntityPlayer player) {
-		return true;
-	}
+    @Override
+    public Object getServerGui(EntityPlayer player) {
+        return new ContainerItemDropper(player.inventory, this);
+    }
 
-	@Override
-	@IncludeInterface
-	public IInventory getInventory() {
-		return inventory;
-	}
+    @Override
+    public Object getClientGui(EntityPlayer player) {
+        return new GuiItemDropper(new ContainerItemDropper(player.inventory, this));
+    }
 
-	@Override
-	public void writeToNBT(NBTTagCompound tag) {
-		super.writeToNBT(tag);
-		inventory.writeToNBT(tag);
-	}
+    @Override
+    public boolean canOpenGui(EntityPlayer player) {
+        return true;
+    }
 
-	@Override
-	public void readFromNBT(NBTTagCompound tag) {
-		super.readFromNBT(tag);
-		inventory.readFromNBT(tag);
-	}
+    @Override
+    @IncludeInterface
+    public IInventory getInventory() {
+        return inventory;
+    }
 
-	@Override
-	public boolean canUpdate() {
-		return false;
-	}
+    @Override
+    public void writeToNBT(NBTTagCompound tag) {
+        super.writeToNBT(tag);
+        inventory.writeToNBT(tag);
+    }
+
+    @Override
+    public void readFromNBT(NBTTagCompound tag) {
+        super.readFromNBT(tag);
+        inventory.readFromNBT(tag);
+    }
+
+    @Override
+    public boolean canUpdate() {
+        return false;
+    }
 }

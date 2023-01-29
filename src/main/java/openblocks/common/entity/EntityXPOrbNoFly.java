@@ -8,73 +8,73 @@ import net.minecraft.world.World;
 
 public class EntityXPOrbNoFly extends EntityXPOrb {
 
-	public EntityXPOrbNoFly(World world) {
-		super(world);
-		this.motionX = 0;
-		this.motionY = 0;
-		this.motionZ = 0;
-	}
+    public EntityXPOrbNoFly(World world) {
+        super(world);
+        this.motionX = 0;
+        this.motionY = 0;
+        this.motionZ = 0;
+    }
 
-	public EntityXPOrbNoFly(World world, double x, double y, double z, int xp) {
-		super(world, x, y, z, xp);
-		this.motionX = 0;
-		this.motionY = 0;
-		this.motionZ = 0;
-	}
+    public EntityXPOrbNoFly(World world, double x, double y, double z, int xp) {
+        super(world, x, y, z, xp);
+        this.motionX = 0;
+        this.motionY = 0;
+        this.motionZ = 0;
+    }
 
-	@Override
-	public void onUpdate() {
-		super.onEntityUpdate();
+    @Override
+    public void onUpdate() {
+        super.onEntityUpdate();
 
-		if (this.field_70532_c > 0) {
-			--this.field_70532_c;
-		}
+        if (this.field_70532_c > 0) {
+            --this.field_70532_c;
+        }
 
-		this.prevPosX = this.posX;
-		this.prevPosY = this.posY;
-		this.prevPosZ = this.posZ;
-		this.motionY -= 0.029999999329447746D;
+        this.prevPosX = this.posX;
+        this.prevPosY = this.posY;
+        this.prevPosZ = this.posZ;
+        this.motionY -= 0.029999999329447746D;
 
-		Block block = worldObj.getBlock(
-				MathHelper.floor_double(this.posX),
-				MathHelper.floor_double(this.posY),
-				MathHelper.floor_double(this.posZ));
+        Block block = worldObj.getBlock(
+                MathHelper.floor_double(this.posX),
+                MathHelper.floor_double(this.posY),
+                MathHelper.floor_double(this.posZ));
 
-		if (block.getMaterial() == Material.lava) {
-			this.motionY = 0.20000000298023224D;
-			this.motionX = (this.rand.nextFloat() - this.rand.nextFloat()) * 0.2F;
-			this.motionZ = (this.rand.nextFloat() - this.rand.nextFloat()) * 0.2F;
-			playSound("random.fizz", 0.4F, 2.0F + this.rand.nextFloat() * 0.4F);
-		}
+        if (block.getMaterial() == Material.lava) {
+            this.motionY = 0.20000000298023224D;
+            this.motionX = (this.rand.nextFloat() - this.rand.nextFloat()) * 0.2F;
+            this.motionZ = (this.rand.nextFloat() - this.rand.nextFloat()) * 0.2F;
+            playSound("random.fizz", 0.4F, 2.0F + this.rand.nextFloat() * 0.4F);
+        }
 
-		func_145771_j(this.posX, (this.boundingBox.minY + this.boundingBox.maxY) / 2.0D, this.posZ);
-		moveEntity(this.motionX, this.motionY, this.motionZ);
-		float f = 0.98F;
+        func_145771_j(this.posX, (this.boundingBox.minY + this.boundingBox.maxY) / 2.0D, this.posZ);
+        moveEntity(this.motionX, this.motionY, this.motionZ);
+        float f = 0.98F;
 
-		if (this.onGround) {
-			f = 0.58800006F;
-			Block blockUnder = worldObj.getBlock(
-					MathHelper.floor_double(this.posX),
-					MathHelper.floor_double(this.boundingBox.minY) - 1,
-					MathHelper.floor_double(this.posZ));
+        if (this.onGround) {
+            f = 0.58800006F;
+            Block blockUnder = worldObj.getBlock(
+                    MathHelper.floor_double(this.posX),
+                    MathHelper.floor_double(this.boundingBox.minY) - 1,
+                    MathHelper.floor_double(this.posZ));
 
-			f = blockUnder.slipperiness * 0.98F;
-		}
+            f = blockUnder.slipperiness * 0.98F;
+        }
 
-		this.motionX *= f;
-		this.motionY *= 0.9800000190734863D;
-		this.motionZ *= f;
+        this.motionX *= f;
+        this.motionY *= 0.9800000190734863D;
+        this.motionZ *= f;
 
-		if (this.onGround) {
-			this.motionY *= -0.8999999761581421D;
-		}
+        if (this.onGround) {
+            this.motionY *= -0.8999999761581421D;
+        }
 
-		++this.xpColor;
-		++this.xpOrbAge;
+        ++this.xpColor;
+        ++this.xpOrbAge;
 
-		if (this.xpOrbAge >= 6000) {
-			setDead();
-		}
-	}
+        if (this.xpOrbAge >= 6000) {
+            setDead();
+        }
+    }
 
 }

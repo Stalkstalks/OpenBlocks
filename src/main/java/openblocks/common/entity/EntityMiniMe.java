@@ -1,24 +1,11 @@
 package openblocks.common.entity;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Throwables;
-import com.google.common.collect.Iterables;
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
-import com.mojang.authlib.properties.Property;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
-import io.netty.buffer.ByteBufOutputStream;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.entity.Entity;
@@ -35,6 +22,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.Constants;
+
 import openblocks.common.entity.ai.EntityAIBreakBlock;
 import openblocks.common.entity.ai.EntityAIPickupPlayer;
 import openmods.Log;
@@ -45,241 +33,261 @@ import openmods.network.event.NetworkEventMeta;
 import openmods.utils.ByteUtils;
 import openmods.utils.io.GameProfileSerializer;
 
+import com.google.common.base.Objects;
+import com.google.common.base.Throwables;
+import com.google.common.collect.Iterables;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.minecraft.MinecraftProfileTexture;
+import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
+import com.mojang.authlib.properties.Property;
+
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
+
 @VisibleForDocumentation
 public class EntityMiniMe extends EntityCreature implements IEntityAdditionalSpawnData {
 
-	@NetworkEventMeta(direction = EventDirection.S2C, compressed = true)
-	public static class OwnerChangeEvent extends NetworkEvent {
+    @NetworkEventMeta(direction = EventDirection.S2C, compressed = true)
+    public static class OwnerChangeEvent extends NetworkEvent {
 
-		private GameProfile profile;
+        private GameProfile profile;
 
-		private int entityId;
+        private int entityId;
 
-		public OwnerChangeEvent(int entityId, GameProfile profile) {
-			this.profile = profile;
-			this.entityId = entityId;
-		}
+        public OwnerChangeEvent(int entityId, GameProfile profile) {
+            this.profile = profile;
+            this.entityId = entityId;
+        }
 
-		@Override
-		protected void readFromStream(DataInput input) throws IOException {
-			this.entityId = ByteUtils.readVLI(input);
-			if (input.readBoolean()) {
-				profile = GameProfileSerializer.read(input);
-			}
-		}
+        @Override
+        protected void readFromStream(DataInput input) throws IOException {
+            this.entityId = ByteUtils.readVLI(input);
+            if (input.readBoolean()) {
+                profile = GameProfileSerializer.read(input);
+            }
+        }
 
-		@Override
-		protected void writeToStream(DataOutput output) throws IOException {
-			ByteUtils.writeVLI(output, entityId);
+        @Override
+        protected void writeToStream(DataOutput output) throws IOException {
+            ByteUtils.writeVLI(output, entityId);
 
-			if (profile != null) {
-				output.writeBoolean(true);
-				GameProfileSerializer.write(profile, output);
-			} else {
-				output.writeBoolean(false);
-			}
-		}
+            if (profile != null) {
+                output.writeBoolean(true);
+                GameProfileSerializer.write(profile, output);
+            } else {
+                output.writeBoolean(false);
+            }
+        }
 
-	}
+    }
 
-	public static class OwnerChangeHandler {
-		@SubscribeEvent
-		public void onProfileChange(OwnerChangeEvent evt) {
-			final World world = evt.sender.worldObj;
+    public static class OwnerChangeHandler {
 
-			Entity e = world.getEntityByID(evt.entityId);
+        @SubscribeEvent
+        public void onProfileChange(OwnerChangeEvent evt) {
+            final World world = evt.sender.worldObj;
 
-			if (e instanceof EntityMiniMe) {
-				((EntityMiniMe)e).owner = evt.profile;
-			}
-		}
-	}
+            Entity e = world.getEntityByID(evt.entityId);
 
-	@SideOnly(Side.CLIENT)
-	private ResourceLocation locationSkin;
+            if (e instanceof EntityMiniMe) {
+                ((EntityMiniMe) e).owner = evt.profile;
+            }
+        }
+    }
 
-	private GameProfile owner;
+    @SideOnly(Side.CLIENT)
+    private ResourceLocation locationSkin;
 
-	private int pickupCooldown = 0;
+    private GameProfile owner;
 
-	private boolean wasRidden = false;
+    private int pickupCooldown = 0;
 
-	public EntityMiniMe(World world, GameProfile owner) {
-		this(world);
-		this.owner = owner != null? fetchFullProfile(owner) : null;
-	}
+    private boolean wasRidden = false;
 
-	public EntityMiniMe(World world) {
-		super(world);
-		setSize(0.6F, 0.95F);
-		func_110163_bv();
-		getNavigator().setAvoidsWater(true);
-		getNavigator().setCanSwim(true);
-		this.tasks.addTask(1, new EntityAISwimming(this));
-		this.tasks.addTask(2, new EntityAIPickupPlayer(this));
-		this.tasks.addTask(3, new EntityAIBreakBlock(this));
-		this.tasks.addTask(4, new EntityAIWander(this, 1.0D));
-		this.tasks.addTask(5, new EntityAIWatchClosest(this, EntityPlayer.class, 6.0F));
-		this.tasks.addTask(6, new EntityAILookIdle(this));
-	}
+    public EntityMiniMe(World world, GameProfile owner) {
+        this(world);
+        this.owner = owner != null ? fetchFullProfile(owner) : null;
+    }
 
-	@Override
-	public void onEntityUpdate() {
-		super.onEntityUpdate();
-		if (pickupCooldown > 0) pickupCooldown--;
-		if (wasRidden && riddenByEntity == null) {
-			wasRidden = false;
-			setPickupCooldown(1200);
-		} else if (riddenByEntity != null) {
-			wasRidden = true;
-		}
-	}
+    public EntityMiniMe(World world) {
+        super(world);
+        setSize(0.6F, 0.95F);
+        func_110163_bv();
+        getNavigator().setAvoidsWater(true);
+        getNavigator().setCanSwim(true);
+        this.tasks.addTask(1, new EntityAISwimming(this));
+        this.tasks.addTask(2, new EntityAIPickupPlayer(this));
+        this.tasks.addTask(3, new EntityAIBreakBlock(this));
+        this.tasks.addTask(4, new EntityAIWander(this, 1.0D));
+        this.tasks.addTask(5, new EntityAIWatchClosest(this, EntityPlayer.class, 6.0F));
+        this.tasks.addTask(6, new EntityAILookIdle(this));
+    }
 
-	@Override
-	public double getMountedYOffset() {
-		return height + 0.15;
-	}
+    @Override
+    public void onEntityUpdate() {
+        super.onEntityUpdate();
+        if (pickupCooldown > 0) pickupCooldown--;
+        if (wasRidden && riddenByEntity == null) {
+            wasRidden = false;
+            setPickupCooldown(1200);
+        } else if (riddenByEntity != null) {
+            wasRidden = true;
+        }
+    }
 
-	public int getPickupCooldown() {
-		return pickupCooldown;
-	}
+    @Override
+    public double getMountedYOffset() {
+        return height + 0.15;
+    }
 
-	public void setPickupCooldown(int cooldown) {
-		pickupCooldown = cooldown;
-	}
+    public int getPickupCooldown() {
+        return pickupCooldown;
+    }
 
-	@Override
-	protected void applyEntityAttributes() {
-		super.applyEntityAttributes();
-		getEntityAttribute(SharedMonsterAttributes.maxHealth).setBaseValue(10.0D);
-		getEntityAttribute(SharedMonsterAttributes.movementSpeed).setBaseValue(0.3D);
-	}
+    public void setPickupCooldown(int cooldown) {
+        pickupCooldown = cooldown;
+    }
 
-	@SideOnly(Side.CLIENT)
-	public ResourceLocation getLocationSkin() {
-		return Objects.firstNonNull(getResourceLocation(), AbstractClientPlayer.locationStevePng);
-	}
+    @Override
+    protected void applyEntityAttributes() {
+        super.applyEntityAttributes();
+        getEntityAttribute(SharedMonsterAttributes.maxHealth).setBaseValue(10.0D);
+        getEntityAttribute(SharedMonsterAttributes.movementSpeed).setBaseValue(0.3D);
+    }
 
-	@Override
-	public void setCustomNameTag(String name) {
-		super.setCustomNameTag(name);
+    @SideOnly(Side.CLIENT)
+    public ResourceLocation getLocationSkin() {
+        return Objects.firstNonNull(getResourceLocation(), AbstractClientPlayer.locationStevePng);
+    }
 
-		if (!worldObj.isRemote && MinecraftServer.getServer() != null) {
-			if (name != null && (owner == null || !name.equalsIgnoreCase(owner.getName()))) {
-				try {
-					final GameProfile profile = MinecraftServer.getServer().func_152358_ax().func_152655_a(name);
-					this.owner = profile != null? fetchFullProfile(profile) : null;
-					propagateOwnerChange();
-				} catch (Exception e) {
-					Log.warn(e, "Failed to change skin to %s", name);
-				}
-			}
-		}
-	}
+    @Override
+    public void setCustomNameTag(String name) {
+        super.setCustomNameTag(name);
 
-	private void propagateOwnerChange() {
-		new OwnerChangeEvent(getEntityId(), owner).sendToEntity(this);
-	}
+        if (!worldObj.isRemote && MinecraftServer.getServer() != null) {
+            if (name != null && (owner == null || !name.equalsIgnoreCase(owner.getName()))) {
+                try {
+                    final GameProfile profile = MinecraftServer.getServer().func_152358_ax().func_152655_a(name);
+                    this.owner = profile != null ? fetchFullProfile(profile) : null;
+                    propagateOwnerChange();
+                } catch (Exception e) {
+                    Log.warn(e, "Failed to change skin to %s", name);
+                }
+            }
+        }
+    }
 
-	private ResourceLocation getResourceLocation() {
-		if (owner != null) {
-			Minecraft minecraft = Minecraft.getMinecraft();
-			Map<?, ?> map = minecraft.func_152342_ad().func_152788_a(owner);
+    private void propagateOwnerChange() {
+        new OwnerChangeEvent(getEntityId(), owner).sendToEntity(this);
+    }
 
-			if (map.containsKey(Type.SKIN)) {
-				final MinecraftProfileTexture skin = (MinecraftProfileTexture)map.get(Type.SKIN);
-				return minecraft.func_152342_ad().func_152792_a(skin, Type.SKIN);
-			}
-		}
+    private ResourceLocation getResourceLocation() {
+        if (owner != null) {
+            Minecraft minecraft = Minecraft.getMinecraft();
+            Map<?, ?> map = minecraft.func_152342_ad().func_152788_a(owner);
 
-		return null;
-	}
+            if (map.containsKey(Type.SKIN)) {
+                final MinecraftProfileTexture skin = (MinecraftProfileTexture) map.get(Type.SKIN);
+                return minecraft.func_152342_ad().func_152792_a(skin, Type.SKIN);
+            }
+        }
 
-	private static GameProfile fetchFullProfile(GameProfile profile) {
-		final Property property = Iterables.getFirst(profile.getProperties().get("textures"), null);
-		return property != null? profile : MinecraftServer.getServer().func_147130_as().fillProfileProperties(profile, true);
-	}
+        return null;
+    }
 
-	@Override
-	protected boolean canDespawn() {
-		return false;
-	}
+    private static GameProfile fetchFullProfile(GameProfile profile) {
+        final Property property = Iterables.getFirst(profile.getProperties().get("textures"), null);
+        return property != null ? profile
+                : MinecraftServer.getServer().func_147130_as().fillProfileProperties(profile, true);
+    }
 
-	@Override
-	public boolean isAIEnabled() {
-		return true;
-	}
+    @Override
+    protected boolean canDespawn() {
+        return false;
+    }
 
-	@Override
-	public boolean isChild() {
-		return true;
-	}
+    @Override
+    public boolean isAIEnabled() {
+        return true;
+    }
 
-	public GameProfile getOwner() {
-		return owner;
-	}
+    @Override
+    public boolean isChild() {
+        return true;
+    }
 
-	@Override
-	public void writeSpawnData(ByteBuf data) {
-		if (owner != null) {
-			data.writeBoolean(true);
-			try {
-				GameProfileSerializer.write(owner, new ByteBufOutputStream(data));
-			} catch (IOException e) {
-				throw Throwables.propagate(e);
-			}
-		} else data.writeBoolean(false);
-	}
+    public GameProfile getOwner() {
+        return owner;
+    }
 
-	@Override
-	public void readSpawnData(ByteBuf data) {
-		if (data.readBoolean()) {
-			try {
-				this.owner = GameProfileSerializer.read(new ByteBufInputStream(data));
-			} catch (IOException e) {
-				throw Throwables.propagate(e);
-			}
-		}
-	}
+    @Override
+    public void writeSpawnData(ByteBuf data) {
+        if (owner != null) {
+            data.writeBoolean(true);
+            try {
+                GameProfileSerializer.write(owner, new ByteBufOutputStream(data));
+            } catch (IOException e) {
+                throw Throwables.propagate(e);
+            }
+        } else data.writeBoolean(false);
+    }
 
-	@Override
-	public void writeEntityToNBT(NBTTagCompound tag) {
-		super.writeEntityToNBT(tag);
+    @Override
+    public void readSpawnData(ByteBuf data) {
+        if (data.readBoolean()) {
+            try {
+                this.owner = GameProfileSerializer.read(new ByteBufInputStream(data));
+            } catch (IOException e) {
+                throw Throwables.propagate(e);
+            }
+        }
+    }
 
-		if (owner != null) {
-			NBTTagCompound ownerTag = new NBTTagCompound();
-			NBTUtil.func_152460_a(ownerTag, owner);
-			tag.setTag("Owner", ownerTag);
-		}
+    @Override
+    public void writeEntityToNBT(NBTTagCompound tag) {
+        super.writeEntityToNBT(tag);
 
-		tag.setInteger("pickupCooldown", pickupCooldown);
-	}
+        if (owner != null) {
+            NBTTagCompound ownerTag = new NBTTagCompound();
+            NBTUtil.func_152460_a(ownerTag, owner);
+            tag.setTag("Owner", ownerTag);
+        }
 
-	@Override
-	public void readEntityFromNBT(NBTTagCompound tag) {
-		this.owner = readOwner(tag);
+        tag.setInteger("pickupCooldown", pickupCooldown);
+    }
 
-		// switched order, to prevent needless profile fetch in setCustomName
-		super.readEntityFromNBT(tag);
+    @Override
+    public void readEntityFromNBT(NBTTagCompound tag) {
+        this.owner = readOwner(tag);
 
-		this.pickupCooldown = tag.getInteger("pickupCooldown");
-	}
+        // switched order, to prevent needless profile fetch in setCustomName
+        super.readEntityFromNBT(tag);
 
-	private static GameProfile readOwner(NBTTagCompound tag) {
-		if (tag.hasKey("owner", Constants.NBT.TAG_STRING)) {
-			String ownerName = tag.getString("owner");
-			return MinecraftServer.getServer().func_152358_ax().func_152655_a(ownerName);
-		} else if (tag.hasKey("OwnerUUID", Constants.NBT.TAG_STRING)) {
-			final String uuidStr = tag.getString("OwnerUUID");
-			try {
-				UUID uuid = UUID.fromString(uuidStr);
-				return new GameProfile(uuid, null);
-			} catch (IllegalArgumentException e) {
-				Log.warn(e, "Failed to parse UUID: %s", uuidStr);
-			}
-		} else if (tag.hasKey("Owner", Constants.NBT.TAG_COMPOUND)) { return NBTUtil.func_152459_a(tag.getCompoundTag("Owner")); }
+        this.pickupCooldown = tag.getInteger("pickupCooldown");
+    }
 
-		return null;
-	}
+    private static GameProfile readOwner(NBTTagCompound tag) {
+        if (tag.hasKey("owner", Constants.NBT.TAG_STRING)) {
+            String ownerName = tag.getString("owner");
+            return MinecraftServer.getServer().func_152358_ax().func_152655_a(ownerName);
+        } else if (tag.hasKey("OwnerUUID", Constants.NBT.TAG_STRING)) {
+            final String uuidStr = tag.getString("OwnerUUID");
+            try {
+                UUID uuid = UUID.fromString(uuidStr);
+                return new GameProfile(uuid, null);
+            } catch (IllegalArgumentException e) {
+                Log.warn(e, "Failed to parse UUID: %s", uuidStr);
+            }
+        } else if (tag.hasKey("Owner", Constants.NBT.TAG_COMPOUND)) {
+            return NBTUtil.func_152459_a(tag.getCompoundTag("Owner"));
+        }
+
+        return null;
+    }
 
 }

@@ -1,13 +1,14 @@
 package openblocks.common.tileentity;
 
-import com.google.common.collect.Maps;
 import java.util.EnumMap;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.oredict.OreDictionary;
+
 import openblocks.OpenBlocks;
 import openblocks.client.gui.GuiPaintMixer;
 import openblocks.common.container.ContainerPaintMixer;
@@ -28,324 +29,331 @@ import openmods.sync.drops.DroppableTileEntity;
 import openmods.sync.drops.StoreOnDrop;
 import openmods.utils.ColorUtils;
 import openmods.utils.MiscUtils;
+
 import org.apache.commons.lang3.ArrayUtils;
 
-public class TileEntityPaintMixer extends DroppableTileEntity implements IInventoryProvider, IHasGui, IInventoryCallback, IColorChanger {
+import com.google.common.collect.Maps;
 
-	private static final ItemStack PAINT_CAN = new ItemStack(OpenBlocks.Blocks.paintCan);
-	private static final ItemStack MILK_BUCKET = new ItemStack(Items.milk_bucket);
-	public static final int PROGRESS_TICKS = 300;
+public class TileEntityPaintMixer extends DroppableTileEntity
+        implements IInventoryProvider, IHasGui, IInventoryCallback, IColorChanger {
 
-	public static enum Slots {
-		paint,
-		reserved, // old output slot, now merged with input
-		dyeCyan,
-		dyeMagenta,
-		dyeYellow,
-		dyeBlack
-	}
+    private static final ItemStack PAINT_CAN = new ItemStack(OpenBlocks.Blocks.paintCan);
+    private static final ItemStack MILK_BUCKET = new ItemStack(Items.milk_bucket);
+    public static final int PROGRESS_TICKS = 300;
 
-	public static enum DyeSlot {
-		cyan,
-		magenta,
-		yellow,
-		black
-	}
+    public static enum Slots {
+        paint,
+        reserved, // old output slot, now merged with input
+        dyeCyan,
+        dyeMagenta,
+        dyeYellow,
+        dyeBlack
+    }
 
-	private static EnumMap<Slots, Integer> ALLOWED_COLORS = Maps.newEnumMap(Slots.class);
+    public static enum DyeSlot {
+        cyan,
+        magenta,
+        yellow,
+        black
+    }
 
-	static {
-		ALLOWED_COLORS.put(Slots.dyeBlack, OreDictionary.getOreID("dyeBlack"));
-		ALLOWED_COLORS.put(Slots.dyeCyan, OreDictionary.getOreID("dyeCyan"));
-		ALLOWED_COLORS.put(Slots.dyeMagenta, OreDictionary.getOreID("dyeMagenta"));
-		ALLOWED_COLORS.put(Slots.dyeYellow, OreDictionary.getOreID("dyeYellow"));
-	}
+    private static EnumMap<Slots, Integer> ALLOWED_COLORS = Maps.newEnumMap(Slots.class);
 
-	public enum Flags {
-		hasPaint
-	}
+    static {
+        ALLOWED_COLORS.put(Slots.dyeBlack, OreDictionary.getOreID("dyeBlack"));
+        ALLOWED_COLORS.put(Slots.dyeCyan, OreDictionary.getOreID("dyeCyan"));
+        ALLOWED_COLORS.put(Slots.dyeMagenta, OreDictionary.getOreID("dyeMagenta"));
+        ALLOWED_COLORS.put(Slots.dyeYellow, OreDictionary.getOreID("dyeYellow"));
+    }
 
-	private SyncableInt canColor;
+    public enum Flags {
+        hasPaint
+    }
 
-	@StoreOnDrop
-	private SyncableInt color;
-	private SyncableInt progress;
-	private SyncableFlags flags;
-	private final WorkerLogic logic = new WorkerLogic(progress, PROGRESS_TICKS);
+    private SyncableInt canColor;
 
-	// These could be optimized with a byte array later
-	// Not important for release
-	// Levels should be 0-2, so that if there is 0.3 left, 1 can be consumed and
-	// not overflow ;)
+    @StoreOnDrop
+    private SyncableInt color;
+    private SyncableInt progress;
+    private SyncableFlags flags;
+    private final WorkerLogic logic = new WorkerLogic(progress, PROGRESS_TICKS);
 
-	@StoreOnDrop
-	public SyncableFloat lvlCyan;
+    // These could be optimized with a byte array later
+    // Not important for release
+    // Levels should be 0-2, so that if there is 0.3 left, 1 can be consumed and
+    // not overflow ;)
 
-	@StoreOnDrop
-	public SyncableFloat lvlMagenta;
+    @StoreOnDrop
+    public SyncableFloat lvlCyan;
 
-	@StoreOnDrop
-	public SyncableFloat lvlYellow;
+    @StoreOnDrop
+    public SyncableFloat lvlMagenta;
 
-	@StoreOnDrop
-	public SyncableFloat lvlBlack;
+    @StoreOnDrop
+    public SyncableFloat lvlYellow;
 
-	private GenericInventory inventory = new TileEntityInventory(this, "paintmixer", true, 6) {
-		@Override
-		public boolean isItemValidForSlot(int slotId, ItemStack stack) {
-			Slots[] values = Slots.values();
-			if (stack == null || slotId < 0 || slotId > values.length) return false;
-			Slots slot = values[slotId];
+    @StoreOnDrop
+    public SyncableFloat lvlBlack;
 
-			if (slot == Slots.paint) return PAINT_CAN.isItemEqual(stack) || MILK_BUCKET.isItemEqual(stack);
-			return isValidForSlot(slot, stack);
-		}
-	};
+    private GenericInventory inventory = new TileEntityInventory(this, "paintmixer", true, 6) {
 
-	public TileEntityPaintMixer() {
-		inventory.addCallback(this);
-	}
+        @Override
+        public boolean isItemValidForSlot(int slotId, ItemStack stack) {
+            Slots[] values = Slots.values();
+            if (stack == null || slotId < 0 || slotId > values.length) return false;
+            Slots slot = values[slotId];
 
-	@Override
-	public void updateEntity() {
-		super.updateEntity();
-		if (!worldObj.isRemote) {
+            if (slot == Slots.paint) return PAINT_CAN.isItemEqual(stack) || MILK_BUCKET.isItemEqual(stack);
+            return isValidForSlot(slot, stack);
+        }
+    };
 
-			if (logic.isWorking()) {
-				if (!hasValidInput() || !hasSufficientInk()) {
-					logic.reset();
-				} else if (logic.update()) {
-					consumeInk();
-					ItemStack output = ItemPaintCan.createStack(color.get(), ItemPaintCan.FULL_CAN_SIZE);
-					inventory.setInventorySlotContents(Slots.paint.ordinal(), output);
-					canColor.set(color.get());
-				}
-			}
+    public TileEntityPaintMixer() {
+        inventory.addCallback(this);
+    }
 
-			checkAutoConsumption();
-			sync();
-		}
-	}
+    @Override
+    public void updateEntity() {
+        super.updateEntity();
+        if (!worldObj.isRemote) {
 
-	private void checkAutoConsumption() {
-		if (lvlCyan.get() <= 1f) { /* We can store 2.0, so <= */
-			if (tryUseInk(Slots.dyeCyan, 1)) {
-				lvlCyan.set(lvlCyan.get() + 1f);
-			}
-		}
-		if (lvlMagenta.get() <= 1f) {
-			if (tryUseInk(Slots.dyeMagenta, 1)) {
-				lvlMagenta.set(lvlMagenta.get() + 1f);
-			}
-		}
-		if (lvlYellow.get() <= 1f) {
-			if (tryUseInk(Slots.dyeYellow, 1)) {
-				lvlYellow.set(lvlYellow.get() + 1f);
-			}
-		}
-		if (lvlBlack.get() <= 1f) {
-			if (tryUseInk(Slots.dyeBlack, 1)) {
-				lvlBlack.set(lvlBlack.get() + 1f);
-			}
-		}
+            if (logic.isWorking()) {
+                if (!hasValidInput() || !hasSufficientInk()) {
+                    logic.reset();
+                } else if (logic.update()) {
+                    consumeInk();
+                    ItemStack output = ItemPaintCan.createStack(color.get(), ItemPaintCan.FULL_CAN_SIZE);
+                    inventory.setInventorySlotContents(Slots.paint.ordinal(), output);
+                    canColor.set(color.get());
+                }
+            }
 
-	}
+            checkAutoConsumption();
+            sync();
+        }
+    }
 
-	private void consumeInk() {
-		ColorUtils.CYMK cymk = new ColorUtils.RGB(color.get()).toCYMK();
-		lvlCyan.set(lvlCyan.get() - cymk.getCyan());
-		lvlBlack.set(lvlBlack.get() - cymk.getKey());
-		lvlYellow.set(lvlYellow.get() - cymk.getYellow());
-		lvlMagenta.set(lvlMagenta.get() - cymk.getMagenta());
-	}
+    private void checkAutoConsumption() {
+        if (lvlCyan.get() <= 1f) { /* We can store 2.0, so <= */
+            if (tryUseInk(Slots.dyeCyan, 1)) {
+                lvlCyan.set(lvlCyan.get() + 1f);
+            }
+        }
+        if (lvlMagenta.get() <= 1f) {
+            if (tryUseInk(Slots.dyeMagenta, 1)) {
+                lvlMagenta.set(lvlMagenta.get() + 1f);
+            }
+        }
+        if (lvlYellow.get() <= 1f) {
+            if (tryUseInk(Slots.dyeYellow, 1)) {
+                lvlYellow.set(lvlYellow.get() + 1f);
+            }
+        }
+        if (lvlBlack.get() <= 1f) {
+            if (tryUseInk(Slots.dyeBlack, 1)) {
+                lvlBlack.set(lvlBlack.get() + 1f);
+            }
+        }
 
-	private boolean hasSufficientInk() {
-		ColorUtils.CYMK cymk = new ColorUtils.RGB(color.get()).toCYMK();
-		if (cymk.getCyan() > lvlCyan.get()) {
-			if (tryUseInk(Slots.dyeCyan, 1)) {
-				lvlCyan.set(lvlCyan.get() + 1f);
-			} else {
-				return false;
-			}
-		}
-		if (cymk.getYellow() > lvlYellow.get()) {
-			if (tryUseInk(Slots.dyeYellow, 1)) {
-				lvlYellow.set(lvlYellow.get() + 1f);
-			} else {
-				return false;
-			}
-		}
-		if (cymk.getMagenta() > lvlMagenta.get()) {
-			if (tryUseInk(Slots.dyeMagenta, 1)) {
-				lvlMagenta.set(lvlMagenta.get() + 1f);
-			} else {
-				return false;
-			}
-		}
-		if (cymk.getKey() > lvlBlack.get()) {
-			if (tryUseInk(Slots.dyeBlack, 1)) {
-				lvlBlack.set(lvlBlack.get() + 1f);
-			} else {
-				return false;
-			}
-		}
-		return true;
-	}
+    }
 
-	public boolean tryUseInk(Slots slot, int consume) {
-		ItemStack stack = inventory.getStackInSlot(slot);
-		return isValidForSlot(slot, stack) && inventory.decrStackSize(slot.ordinal(), consume) != null;
-	}
+    private void consumeInk() {
+        ColorUtils.CYMK cymk = new ColorUtils.RGB(color.get()).toCYMK();
+        lvlCyan.set(lvlCyan.get() - cymk.getCyan());
+        lvlBlack.set(lvlBlack.get() - cymk.getKey());
+        lvlYellow.set(lvlYellow.get() - cymk.getYellow());
+        lvlMagenta.set(lvlMagenta.get() - cymk.getMagenta());
+    }
 
-	private static boolean isValidForSlot(Slots slot, ItemStack stack) {
-		Integer allowedColor = ALLOWED_COLORS.get(slot);
-		if (allowedColor == null || stack == null) return false;
-		int[] oreIds = OreDictionary.getOreIDs(stack);
-		return ArrayUtils.contains(oreIds, allowedColor);
-	}
+    private boolean hasSufficientInk() {
+        ColorUtils.CYMK cymk = new ColorUtils.RGB(color.get()).toCYMK();
+        if (cymk.getCyan() > lvlCyan.get()) {
+            if (tryUseInk(Slots.dyeCyan, 1)) {
+                lvlCyan.set(lvlCyan.get() + 1f);
+            } else {
+                return false;
+            }
+        }
+        if (cymk.getYellow() > lvlYellow.get()) {
+            if (tryUseInk(Slots.dyeYellow, 1)) {
+                lvlYellow.set(lvlYellow.get() + 1f);
+            } else {
+                return false;
+            }
+        }
+        if (cymk.getMagenta() > lvlMagenta.get()) {
+            if (tryUseInk(Slots.dyeMagenta, 1)) {
+                lvlMagenta.set(lvlMagenta.get() + 1f);
+            } else {
+                return false;
+            }
+        }
+        if (cymk.getKey() > lvlBlack.get()) {
+            if (tryUseInk(Slots.dyeBlack, 1)) {
+                lvlBlack.set(lvlBlack.get() + 1f);
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
 
-	@Override
-	protected void createSyncedFields() {
-		color = new SyncableInt(0xFF0000);
-		flags = SyncableFlags.create(Flags.values().length);
-		progress = new SyncableInt();
-		lvlBlack = new SyncableFloat();
-		lvlCyan = new SyncableFloat();
-		lvlMagenta = new SyncableFloat();
-		lvlYellow = new SyncableFloat();
-		canColor = new SyncableInt(0xFFFFFF);
-	}
+    public boolean tryUseInk(Slots slot, int consume) {
+        ItemStack stack = inventory.getStackInSlot(slot);
+        return isValidForSlot(slot, stack) && inventory.decrStackSize(slot.ordinal(), consume) != null;
+    }
 
-	@Override
-	public Object getServerGui(EntityPlayer player) {
-		return new ContainerPaintMixer(player.inventory, this);
-	}
+    private static boolean isValidForSlot(Slots slot, ItemStack stack) {
+        Integer allowedColor = ALLOWED_COLORS.get(slot);
+        if (allowedColor == null || stack == null) return false;
+        int[] oreIds = OreDictionary.getOreIDs(stack);
+        return ArrayUtils.contains(oreIds, allowedColor);
+    }
 
-	@Override
-	public Object getClientGui(EntityPlayer player) {
-		return new GuiPaintMixer(new ContainerPaintMixer(player.inventory, this));
-	}
+    @Override
+    protected void createSyncedFields() {
+        color = new SyncableInt(0xFF0000);
+        flags = SyncableFlags.create(Flags.values().length);
+        progress = new SyncableInt();
+        lvlBlack = new SyncableFloat();
+        lvlCyan = new SyncableFloat();
+        lvlMagenta = new SyncableFloat();
+        lvlYellow = new SyncableFloat();
+        canColor = new SyncableInt(0xFFFFFF);
+    }
 
-	@Override
-	public boolean canOpenGui(EntityPlayer player) {
-		return true;
-	}
+    @Override
+    public Object getServerGui(EntityPlayer player) {
+        return new ContainerPaintMixer(player.inventory, this);
+    }
 
-	@Override
-	public void changeColor(int requestedColor) {
-		if (!worldObj.isRemote) {
-			if (logic.isWorking()) {
-				if (requestedColor != color.get()) logic.reset();
-				else return;
-			}
-			color.set(requestedColor);
-			logic.start();
-		}
-	}
+    @Override
+    public Object getClientGui(EntityPlayer player) {
+        return new GuiPaintMixer(new ContainerPaintMixer(player.inventory, this));
+    }
 
-	public IValueProvider<Integer> getProgress() {
-		return progress;
-	}
+    @Override
+    public boolean canOpenGui(EntityPlayer player) {
+        return true;
+    }
 
-	public IValueProvider<Integer> getColor() {
-		return color;
-	}
+    @Override
+    public void changeColor(int requestedColor) {
+        if (!worldObj.isRemote) {
+            if (logic.isWorking()) {
+                if (requestedColor != color.get()) logic.reset();
+                else return;
+            }
+            color.set(requestedColor);
+            logic.start();
+        }
+    }
 
-	public IValueProvider<Float> getDyeSlot(DyeSlot slot) {
-		switch (slot) {
-			case black:
-				return lvlBlack;
-			case cyan:
-				return lvlCyan;
-			case magenta:
-				return lvlMagenta;
-			case yellow:
-				return lvlYellow;
-			default:
-				throw MiscUtils.unhandledEnum(slot);
-		}
-	}
+    public IValueProvider<Integer> getProgress() {
+        return progress;
+    }
 
-	public boolean hasPaint() {
-		return flags.get(Flags.hasPaint);
-	}
+    public IValueProvider<Integer> getColor() {
+        return color;
+    }
 
-	public int getCanColor() {
-		return canColor.get();
-	}
+    public IValueProvider<Float> getDyeSlot(DyeSlot slot) {
+        switch (slot) {
+            case black:
+                return lvlBlack;
+            case cyan:
+                return lvlCyan;
+            case magenta:
+                return lvlMagenta;
+            case yellow:
+                return lvlYellow;
+            default:
+                throw MiscUtils.unhandledEnum(slot);
+        }
+    }
 
-	public boolean isEnabled() {
-		return progress.get() > 0;
-	}
+    public boolean hasPaint() {
+        return flags.get(Flags.hasPaint);
+    }
 
-	public boolean hasValidInput() {
-		return hasStack(Slots.paint, PAINT_CAN) || hasStack(Slots.paint, MILK_BUCKET);
-	}
+    public int getCanColor() {
+        return canColor.get();
+    }
 
-	private static Integer getColor(ItemStack stack, boolean canColor) {
-		if (stack.isItemEqual(PAINT_CAN)) return ItemPaintCan.getColorFromStack(stack);
-		else if (canColor && stack.isItemEqual(MILK_BUCKET)) return 0xFFFFFF;
-		return null;
-	}
+    public boolean isEnabled() {
+        return progress.get() > 0;
+    }
 
-	@Override
-	public void onInventoryChanged(IInventory invent, int slotNumber) {
-		if (!worldObj.isRemote) {
+    public boolean hasValidInput() {
+        return hasStack(Slots.paint, PAINT_CAN) || hasStack(Slots.paint, MILK_BUCKET);
+    }
 
-			boolean hasPaint = false;
-			ItemStack can = inventory.getStackInSlot(Slots.paint);
-			if (can != null) {
-				Integer pickerColor = getColor(can, false);
-				if (pickerColor != null && !logic.isWorking()) {
-					color.set(pickerColor);
-					// force GUI refresh
-					color.markDirty();
-				}
+    private static Integer getColor(ItemStack stack, boolean canColor) {
+        if (stack.isItemEqual(PAINT_CAN)) return ItemPaintCan.getColorFromStack(stack);
+        else if (canColor && stack.isItemEqual(MILK_BUCKET)) return 0xFFFFFF;
+        return null;
+    }
 
-				Integer canColor = getColor(can, true);
-				if (canColor != null) {
-					this.canColor.set(canColor);
-					hasPaint = true;
-				}
-			}
-			flags.set(Flags.hasPaint, hasPaint);
-			sync();
+    @Override
+    public void onInventoryChanged(IInventory invent, int slotNumber) {
+        if (!worldObj.isRemote) {
 
-			markUpdated();
-		}
-	}
+            boolean hasPaint = false;
+            ItemStack can = inventory.getStackInSlot(Slots.paint);
+            if (can != null) {
+                Integer pickerColor = getColor(can, false);
+                if (pickerColor != null && !logic.isWorking()) {
+                    color.set(pickerColor);
+                    // force GUI refresh
+                    color.markDirty();
+                }
 
-	private boolean hasStack(Slots slot, ItemStack stack) {
-		ItemStack gotStack = inventory.getStackInSlot(slot);
-		if (gotStack == null) { return false; }
-		return gotStack.isItemEqual(stack);
-	}
+                Integer canColor = getColor(can, true);
+                if (canColor != null) {
+                    this.canColor.set(canColor);
+                    hasPaint = true;
+                }
+            }
+            flags.set(Flags.hasPaint, hasPaint);
+            sync();
 
-	@Override
-	@IncludeInterface
-	public IInventory getInventory() {
-		return inventory;
-	}
+            markUpdated();
+        }
+    }
 
-	@Override
-	public void writeToNBT(NBTTagCompound tag) {
-		super.writeToNBT(tag);
-		inventory.writeToNBT(tag);
-	}
+    private boolean hasStack(Slots slot, ItemStack stack) {
+        ItemStack gotStack = inventory.getStackInSlot(slot);
+        if (gotStack == null) {
+            return false;
+        }
+        return gotStack.isItemEqual(stack);
+    }
 
-	@Override
-	public void readFromNBT(NBTTagCompound tag) {
-		super.readFromNBT(tag);
-		inventory.readFromNBT(tag);
-	}
+    @Override
+    @IncludeInterface
+    public IInventory getInventory() {
+        return inventory;
+    }
 
-	public IColorChanger createRpcProxy() {
-		return createClientRpcProxy(IColorChanger.class);
-	}
+    @Override
+    public void writeToNBT(NBTTagCompound tag) {
+        super.writeToNBT(tag);
+        inventory.writeToNBT(tag);
+    }
 
-	@Override
-	public ItemStack getPickBlock() {
-		return getRawDrop();
-	}
+    @Override
+    public void readFromNBT(NBTTagCompound tag) {
+        super.readFromNBT(tag);
+        inventory.readFromNBT(tag);
+    }
+
+    public IColorChanger createRpcProxy() {
+        return createClientRpcProxy(IColorChanger.class);
+    }
+
+    @Override
+    public ItemStack getPickBlock() {
+        return getRawDrop();
+    }
 
 }

@@ -1,10 +1,9 @@
 package openblocks.common.block;
 
-import cpw.mods.fml.relauncher.Side;
-import cpw.mods.fml.relauncher.SideOnly;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.entity.player.EntityPlayer;
@@ -17,6 +16,7 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.common.util.ForgeDirection;
+
 import openblocks.common.tileentity.TileEntityGuide;
 import openmods.api.ISelectionAware;
 import openmods.block.BlockRotationMode;
@@ -27,267 +27,300 @@ import openmods.geometry.BoundingBoxMap;
 import openmods.geometry.HalfAxis;
 import openmods.geometry.Orientation;
 import openmods.infobook.BookDocumentation;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 @BookDocumentation(hasVideo = true)
 public class BlockGuide extends OpenBlock implements ISelectionAware {
 
-	private AxisAlignedBB selection;
+    private AxisAlignedBB selection;
 
-	private static double P = 1.0 / 16.0;
+    private static double P = 1.0 / 16.0;
 
-	private static final double SELECTION_BOX_DEPTH = 0.01;
+    private static final double SELECTION_BOX_DEPTH = 0.01;
 
-	private interface IShapeManipulator {
-		public boolean activate(TileEntityGuide te, EntityPlayerMP player);
-	}
+    private interface IShapeManipulator {
 
-	private static IShapeManipulator createHalfAxisIncrementer(ForgeDirection dir) {
-		final HalfAxis halfAxis = HalfAxis.fromDirection(dir);
+        public boolean activate(TileEntityGuide te, EntityPlayerMP player);
+    }
 
-		return new IShapeManipulator() {
-			@Override
-			public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
-				return te.incrementHalfAxis(halfAxis, player);
-			}
-		};
-	}
+    private static IShapeManipulator createHalfAxisIncrementer(ForgeDirection dir) {
+        final HalfAxis halfAxis = HalfAxis.fromDirection(dir);
 
-	private static IShapeManipulator createHalfAxisDecrementer(ForgeDirection dir) {
-		final HalfAxis halfAxis = HalfAxis.fromDirection(dir);
+        return new IShapeManipulator() {
 
-		return new IShapeManipulator() {
-			@Override
-			public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
-				return te.decrementHalfAxis(halfAxis, player);
-			}
-		};
-	}
+            @Override
+            public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
+                return te.incrementHalfAxis(halfAxis, player);
+            }
+        };
+    }
 
-	private static IShapeManipulator createHalfAxisCopier(ForgeDirection dir) {
-		final HalfAxis halfAxis = HalfAxis.fromDirection(dir);
+    private static IShapeManipulator createHalfAxisDecrementer(ForgeDirection dir) {
+        final HalfAxis halfAxis = HalfAxis.fromDirection(dir);
 
-		return new IShapeManipulator() {
-			@Override
-			public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
-				return te.copyHalfAxis(halfAxis, halfAxis.negate(), player);
-			}
-		};
-	}
+        return new IShapeManipulator() {
 
-	private IShapeManipulator createRotationManipulator(final HalfAxis ha) {
-		return new IShapeManipulator() {
-			@Override
-			public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
-				return createRotationHelper(te.getWorldObj(), te.xCoord, te.yCoord, te.zCoord).rotateAroundAxis(ha);
-			}
-		};
-	}
+            @Override
+            public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
+                return te.decrementHalfAxis(halfAxis, player);
+            }
+        };
+    }
 
-	private static AxisAlignedBB addButton(ForgeDirection side, BlockTextureTransform transform, int left, int top, int width, int height) {
-		final BlockTextureTransform.WorldCoords min = transform.textureCoordsToWorldVec(side, left * P, top * P, -SELECTION_BOX_DEPTH);
-		final BlockTextureTransform.WorldCoords max = transform.textureCoordsToWorldVec(side, (left + width) * P, (top + height) * P, SELECTION_BOX_DEPTH);
-		return AabbUtils.createAabb(min.x, min.y, min.z, max.x, max.y, max.z);
-	}
+    private static IShapeManipulator createHalfAxisCopier(ForgeDirection dir) {
+        final HalfAxis halfAxis = HalfAxis.fromDirection(dir);
 
-	private void createNSWESide(BoundingBoxMap<BoundingBoxMap<IShapeManipulator>> output, ForgeDirection face) {
-		final BlockTextureTransform transform = getRotationMode().textureTransform;
+        return new IShapeManipulator() {
 
-		final BoundingBoxMap<IShapeManipulator> subBoxes = BoundingBoxMap.create();
+            @Override
+            public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
+                return te.copyHalfAxis(halfAxis, halfAxis.negate(), player);
+            }
+        };
+    }
 
-		final ForgeDirection right = face.getRotation(ForgeDirection.DOWN);
-		final ForgeDirection left = right.getOpposite();
+    private IShapeManipulator createRotationManipulator(final HalfAxis ha) {
+        return new IShapeManipulator() {
 
-		final ForgeDirection top = ForgeDirection.UP;
-		final ForgeDirection bottom = ForgeDirection.DOWN;
+            @Override
+            public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
+                return createRotationHelper(te.getWorldObj(), te.xCoord, te.yCoord, te.zCoord).rotateAroundAxis(ha);
+            }
+        };
+    }
 
-		subBoxes.addBox(addButton(face, transform, 4, 1, 3, 3), createHalfAxisDecrementer(top));
-		subBoxes.addBox(addButton(face, transform, 9, 1, 3, 3), createHalfAxisIncrementer(top));
-		subBoxes.addBox(addButton(face, transform, 6, 4, 4, 2), createHalfAxisCopier(top));
+    private static AxisAlignedBB addButton(ForgeDirection side, BlockTextureTransform transform, int left, int top,
+            int width, int height) {
+        final BlockTextureTransform.WorldCoords min = transform
+                .textureCoordsToWorldVec(side, left * P, top * P, -SELECTION_BOX_DEPTH);
+        final BlockTextureTransform.WorldCoords max = transform
+                .textureCoordsToWorldVec(side, (left + width) * P, (top + height) * P, SELECTION_BOX_DEPTH);
+        return AabbUtils.createAabb(min.x, min.y, min.z, max.x, max.y, max.z);
+    }
 
-		subBoxes.addBox(addButton(face, transform, 12, 4, 3, 3), createHalfAxisDecrementer(right));
-		subBoxes.addBox(addButton(face, transform, 12, 9, 3, 3), createHalfAxisIncrementer(right));
-		subBoxes.addBox(addButton(face, transform, 10, 6, 2, 4), createHalfAxisCopier(right));
+    private void createNSWESide(BoundingBoxMap<BoundingBoxMap<IShapeManipulator>> output, ForgeDirection face) {
+        final BlockTextureTransform transform = getRotationMode().textureTransform;
 
-		subBoxes.addBox(addButton(face, transform, 9, 12, 3, 3), createHalfAxisDecrementer(bottom));
-		subBoxes.addBox(addButton(face, transform, 4, 12, 3, 3), createHalfAxisIncrementer(bottom));
-		subBoxes.addBox(addButton(face, transform, 6, 10, 4, 2), createHalfAxisCopier(bottom));
+        final BoundingBoxMap<IShapeManipulator> subBoxes = BoundingBoxMap.create();
 
-		subBoxes.addBox(addButton(face, transform, 1, 9, 3, 3), createHalfAxisDecrementer(left));
-		subBoxes.addBox(addButton(face, transform, 1, 4, 3, 3), createHalfAxisIncrementer(left));
-		subBoxes.addBox(addButton(face, transform, 4, 6, 2, 4), createHalfAxisCopier(left));
+        final ForgeDirection right = face.getRotation(ForgeDirection.DOWN);
+        final ForgeDirection left = right.getOpposite();
 
-		final BlockTextureTransform.WorldCoords overboxMin = transform.textureCoordsToWorldVec(face, P, P, -SELECTION_BOX_DEPTH);
-		final BlockTextureTransform.WorldCoords overboxMax = transform.textureCoordsToWorldVec(face, 1 - P, 1 - P, SELECTION_BOX_DEPTH);
-		output.addBox(AabbUtils.createAabb(overboxMin.x, overboxMin.y, overboxMin.z, overboxMax.x, overboxMax.y, overboxMax.z), subBoxes);
-	}
+        final ForgeDirection top = ForgeDirection.UP;
+        final ForgeDirection bottom = ForgeDirection.DOWN;
 
-	private void createTopBottomSide(BoundingBoxMap<BoundingBoxMap<IShapeManipulator>> output, ForgeDirection face) {
-		final BlockTextureTransform transform = getRotationMode().textureTransform;
+        subBoxes.addBox(addButton(face, transform, 4, 1, 3, 3), createHalfAxisDecrementer(top));
+        subBoxes.addBox(addButton(face, transform, 9, 1, 3, 3), createHalfAxisIncrementer(top));
+        subBoxes.addBox(addButton(face, transform, 6, 4, 4, 2), createHalfAxisCopier(top));
 
-		final BoundingBoxMap<IShapeManipulator> subBoxes = BoundingBoxMap.create();
+        subBoxes.addBox(addButton(face, transform, 12, 4, 3, 3), createHalfAxisDecrementer(right));
+        subBoxes.addBox(addButton(face, transform, 12, 9, 3, 3), createHalfAxisIncrementer(right));
+        subBoxes.addBox(addButton(face, transform, 10, 6, 2, 4), createHalfAxisCopier(right));
 
-		subBoxes.addBox(addButton(face, transform, 1, 3, 4, 11), createRotationManipulator(HalfAxis.NEG_Y));
-		subBoxes.addBox(addButton(face, transform, 11, 3, 4, 11), createRotationManipulator(HalfAxis.POS_Y));
+        subBoxes.addBox(addButton(face, transform, 9, 12, 3, 3), createHalfAxisDecrementer(bottom));
+        subBoxes.addBox(addButton(face, transform, 4, 12, 3, 3), createHalfAxisIncrementer(bottom));
+        subBoxes.addBox(addButton(face, transform, 6, 10, 4, 2), createHalfAxisCopier(bottom));
 
-		subBoxes.addBox(addButton(face, transform, 5, 2, 6, 3), new IShapeManipulator() {
-			@Override
-			public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
-				te.incrementMode(player);
-				return true;
-			}
-		});
+        subBoxes.addBox(addButton(face, transform, 1, 9, 3, 3), createHalfAxisDecrementer(left));
+        subBoxes.addBox(addButton(face, transform, 1, 4, 3, 3), createHalfAxisIncrementer(left));
+        subBoxes.addBox(addButton(face, transform, 4, 6, 2, 4), createHalfAxisCopier(left));
 
-		subBoxes.addBox(addButton(face, transform, 5, 8, 6, 3), new IShapeManipulator() {
-			@Override
-			public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
-				te.decrementMode(player);
-				return true;
-			}
-		});
+        final BlockTextureTransform.WorldCoords overboxMin = transform
+                .textureCoordsToWorldVec(face, P, P, -SELECTION_BOX_DEPTH);
+        final BlockTextureTransform.WorldCoords overboxMax = transform
+                .textureCoordsToWorldVec(face, 1 - P, 1 - P, SELECTION_BOX_DEPTH);
+        output.addBox(
+                AabbUtils
+                        .createAabb(overboxMin.x, overboxMin.y, overboxMin.z, overboxMax.x, overboxMax.y, overboxMax.z),
+                subBoxes);
+    }
 
-		final BlockTextureTransform.WorldCoords overboxMin = transform.textureCoordsToWorldVec(face, P, P, -SELECTION_BOX_DEPTH);
-		final BlockTextureTransform.WorldCoords overboxMax = transform.textureCoordsToWorldVec(face, 1 - P, 1 - P, SELECTION_BOX_DEPTH);
-		output.addBox(AabbUtils.createAabb(overboxMin.x, overboxMin.y, overboxMin.z, overboxMax.x, overboxMax.y, overboxMax.z), subBoxes);
-	}
+    private void createTopBottomSide(BoundingBoxMap<BoundingBoxMap<IShapeManipulator>> output, ForgeDirection face) {
+        final BlockTextureTransform transform = getRotationMode().textureTransform;
 
-	private BoundingBoxMap<BoundingBoxMap<IShapeManipulator>> buttons = BoundingBoxMap.create();
-	{
-		createTopBottomSide(buttons, ForgeDirection.UP);
-		createNSWESide(buttons, ForgeDirection.NORTH);
-		createNSWESide(buttons, ForgeDirection.SOUTH);
-		createNSWESide(buttons, ForgeDirection.EAST);
-		createNSWESide(buttons, ForgeDirection.WEST);
-		createTopBottomSide(buttons, ForgeDirection.DOWN);
-	}
+        final BoundingBoxMap<IShapeManipulator> subBoxes = BoundingBoxMap.create();
 
-	public static class Icons {
-		public static IIcon marker;
-	}
+        subBoxes.addBox(addButton(face, transform, 1, 3, 4, 11), createRotationManipulator(HalfAxis.NEG_Y));
+        subBoxes.addBox(addButton(face, transform, 11, 3, 4, 11), createRotationManipulator(HalfAxis.POS_Y));
 
-	public BlockGuide() {
-		super(Material.rock);
-		setLightLevel(0.6f);
-		setRotationMode(BlockRotationMode.THREE_FOUR_DIRECTIONS);
-		setPlacementMode(BlockPlacementMode.SURFACE);
-	}
+        subBoxes.addBox(addButton(face, transform, 5, 2, 6, 3), new IShapeManipulator() {
 
-	@Override
-	public boolean isOpaqueCube() {
-		return false;
-	}
+            @Override
+            public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
+                te.incrementMode(player);
+                return true;
+            }
+        });
 
-	@Override
-	public boolean renderAsNormalBlock() {
-		return true;
-	}
+        subBoxes.addBox(addButton(face, transform, 5, 8, 6, 3), new IShapeManipulator() {
 
-	protected IIcon centerIcon;
+            @Override
+            public boolean activate(TileEntityGuide te, EntityPlayerMP player) {
+                te.decrementMode(player);
+                return true;
+            }
+        });
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void registerBlockIcons(IIconRegister registry) {
-		super.registerBlockIcons(registry);
-		Icons.marker = registry.registerIcon("openblocks:guide");
-		this.centerIcon = registry.registerIcon(getCenterIconName());
+        final BlockTextureTransform.WorldCoords overboxMin = transform
+                .textureCoordsToWorldVec(face, P, P, -SELECTION_BOX_DEPTH);
+        final BlockTextureTransform.WorldCoords overboxMax = transform
+                .textureCoordsToWorldVec(face, 1 - P, 1 - P, SELECTION_BOX_DEPTH);
+        output.addBox(
+                AabbUtils
+                        .createAabb(overboxMin.x, overboxMin.y, overboxMin.z, overboxMax.x, overboxMax.y, overboxMax.z),
+                subBoxes);
+    }
 
-		setTextures(registry.registerIcon("openblocks:guide_top_new"), ForgeDirection.UP, ForgeDirection.DOWN);
-		setTextures(registry.registerIcon("openblocks:guide_side_new"), ForgeDirection.NORTH, ForgeDirection.SOUTH, ForgeDirection.EAST, ForgeDirection.WEST);
-	}
+    private BoundingBoxMap<BoundingBoxMap<IShapeManipulator>> buttons = BoundingBoxMap.create();
+    {
+        createTopBottomSide(buttons, ForgeDirection.UP);
+        createNSWESide(buttons, ForgeDirection.NORTH);
+        createNSWESide(buttons, ForgeDirection.SOUTH);
+        createNSWESide(buttons, ForgeDirection.EAST);
+        createNSWESide(buttons, ForgeDirection.WEST);
+        createTopBottomSide(buttons, ForgeDirection.DOWN);
+    }
 
-	protected String getCenterIconName() {
-		return "openblocks:guide_center_normal";
-	}
+    public static class Icons {
 
-	public IIcon getCenterTexture() {
-		return centerIcon;
-	}
+        public static IIcon marker;
+    }
 
-	@Override
-	public boolean canBeReplacedByLeaves(IBlockAccess world, int x, int y, int z) {
-		return false;
-	}
+    public BlockGuide() {
+        super(Material.rock);
+        setLightLevel(0.6f);
+        setRotationMode(BlockRotationMode.THREE_FOUR_DIRECTIONS);
+        setPlacementMode(BlockPlacementMode.SURFACE);
+    }
 
-	@Override
-	public boolean isFlammable(IBlockAccess world, int x, int y, int z, ForgeDirection face) {
-		return false;
-	}
+    @Override
+    public boolean isOpaqueCube() {
+        return false;
+    }
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	public int getRenderBlockPass() {
-		return 1;
-	}
+    @Override
+    public boolean renderAsNormalBlock() {
+        return true;
+    }
 
-	@Override
-	public AxisAlignedBB getSelectedBoundingBoxFromPool(World world, int x, int y, int z) {
-		return selection != null? selection : super.getSelectedBoundingBoxFromPool(world, x, y, z);
-	}
+    protected IIcon centerIcon;
 
-	private Map.Entry<AxisAlignedBB, IShapeManipulator> findClickBox(Vec3 pos) {
-		final Entry<AxisAlignedBB, BoundingBoxMap<IShapeManipulator>> sideBox = buttons.findEntryContainingPoint(pos);
-		if (sideBox != null) {
-			final Entry<AxisAlignedBB, IShapeManipulator> subSideBox = sideBox.getValue().findEntryContainingPoint(pos);
-			if (subSideBox != null) return subSideBox;
-		}
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void registerBlockIcons(IIconRegister registry) {
+        super.registerBlockIcons(registry);
+        Icons.marker = registry.registerIcon("openblocks:guide");
+        this.centerIcon = registry.registerIcon(getCenterIconName());
 
-		return null;
-	}
+        setTextures(registry.registerIcon("openblocks:guide_top_new"), ForgeDirection.UP, ForgeDirection.DOWN);
+        setTextures(
+                registry.registerIcon("openblocks:guide_side_new"),
+                ForgeDirection.NORTH,
+                ForgeDirection.SOUTH,
+                ForgeDirection.EAST,
+                ForgeDirection.WEST);
+    }
 
-	protected boolean areButtonsActive(EntityPlayer player) {
-		return true;
-	}
+    protected String getCenterIconName() {
+        return "openblocks:guide_center_normal";
+    }
 
-	protected boolean onItemUse(EntityPlayerMP player, TileEntityGuide guide, int side, float hitX, float hitY, float hitZ) {
-		return false;
-	}
+    public IIcon getCenterTexture() {
+        return centerIcon;
+    }
 
-	@Override
-	public boolean onSelected(World world, int x, int y, int z, DrawBlockHighlightEvent evt) {
-		if (areButtonsActive(evt.player)) {
-			final Vec3 hitVec = evt.target.hitVec;
+    @Override
+    public boolean canBeReplacedByLeaves(IBlockAccess world, int x, int y, int z) {
+        return false;
+    }
 
-			final int metadata = world.getBlockMetadata(x, y, z);
-			final BlockRotationMode rotationMode = getRotationMode();
-			final Orientation orientation = rotationMode.fromValue(metadata);
-			final Vec3 localHit = BlockSpaceTransform.instance.mapWorldToBlock(orientation, hitVec.xCoord - x, hitVec.yCoord - y, hitVec.zCoord - z);
-			final Entry<AxisAlignedBB, IShapeManipulator> clickBox = findClickBox(localHit);
-			selection = clickBox != null? BlockSpaceTransform.instance.mapBlockToWorld(orientation, clickBox.getKey()).offset(x, y, z) : null;
-		} else selection = null;
+    @Override
+    public boolean isFlammable(IBlockAccess world, int x, int y, int z, ForgeDirection face) {
+        return false;
+    }
 
-		return false;
-	}
+    @Override
+    @SideOnly(Side.CLIENT)
+    public int getRenderBlockPass() {
+        return 1;
+    }
 
-	@Override
-	public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int side, float hitX, float hitY, float hitZ) {
-		if (player instanceof EntityPlayerMP) {
-			final TileEntityGuide guide = getTileEntity(world, x, y, z, TileEntityGuide.class);
+    @Override
+    public AxisAlignedBB getSelectedBoundingBoxFromPool(World world, int x, int y, int z) {
+        return selection != null ? selection : super.getSelectedBoundingBoxFromPool(world, x, y, z);
+    }
 
-			if (guide != null) {
-				final EntityPlayerMP playerMP = (EntityPlayerMP)player;
+    private Map.Entry<AxisAlignedBB, IShapeManipulator> findClickBox(Vec3 pos) {
+        final Entry<AxisAlignedBB, BoundingBoxMap<IShapeManipulator>> sideBox = buttons.findEntryContainingPoint(pos);
+        if (sideBox != null) {
+            final Entry<AxisAlignedBB, IShapeManipulator> subSideBox = sideBox.getValue().findEntryContainingPoint(pos);
+            if (subSideBox != null) return subSideBox;
+        }
 
-				if (areButtonsActive(playerMP)) {
-					final int metadata = world.getBlockMetadata(x, y, z);
-					final BlockRotationMode rotationMode = getRotationMode();
-					final Orientation orientation = rotationMode.fromValue(metadata);
-					final Vec3 localHit = BlockSpaceTransform.instance.mapWorldToBlock(orientation, hitX, hitY, hitZ);
-					final Entry<AxisAlignedBB, IShapeManipulator> clickBox = findClickBox(localHit);
-					if (clickBox != null) return clickBox.getValue().activate(guide, playerMP);
-				}
+        return null;
+    }
 
-				final ItemStack heldStack = playerMP.getHeldItem();
-				if (heldStack != null) {
-					if (guide.onItemUse(playerMP, heldStack, side, hitX, hitY, hitZ)) return true;
-				}
-			}
-		}
+    protected boolean areButtonsActive(EntityPlayer player) {
+        return true;
+    }
 
-		return true;
-	}
+    protected boolean onItemUse(EntityPlayerMP player, TileEntityGuide guide, int side, float hitX, float hitY,
+            float hitZ) {
+        return false;
+    }
 
-	@Override
-	@SideOnly(Side.CLIENT)
-	public void randomDisplayTick(World world, int x, int y, int z, Random random) {
-		world.spawnParticle("smoke", x + 0.5f, y + 0.7f, z + 0.5f, 0.0D, 0.0D, 0.0D);
-		world.spawnParticle("flame", x + 0.5f, y + 0.7f, z + 0.5f, 0.0D, 0.0D, 0.0D);
-	}
+    @Override
+    public boolean onSelected(World world, int x, int y, int z, DrawBlockHighlightEvent evt) {
+        if (areButtonsActive(evt.player)) {
+            final Vec3 hitVec = evt.target.hitVec;
+
+            final int metadata = world.getBlockMetadata(x, y, z);
+            final BlockRotationMode rotationMode = getRotationMode();
+            final Orientation orientation = rotationMode.fromValue(metadata);
+            final Vec3 localHit = BlockSpaceTransform.instance
+                    .mapWorldToBlock(orientation, hitVec.xCoord - x, hitVec.yCoord - y, hitVec.zCoord - z);
+            final Entry<AxisAlignedBB, IShapeManipulator> clickBox = findClickBox(localHit);
+            selection = clickBox != null
+                    ? BlockSpaceTransform.instance.mapBlockToWorld(orientation, clickBox.getKey()).offset(x, y, z)
+                    : null;
+        } else selection = null;
+
+        return false;
+    }
+
+    @Override
+    public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int side, float hitX,
+            float hitY, float hitZ) {
+        if (player instanceof EntityPlayerMP) {
+            final TileEntityGuide guide = getTileEntity(world, x, y, z, TileEntityGuide.class);
+
+            if (guide != null) {
+                final EntityPlayerMP playerMP = (EntityPlayerMP) player;
+
+                if (areButtonsActive(playerMP)) {
+                    final int metadata = world.getBlockMetadata(x, y, z);
+                    final BlockRotationMode rotationMode = getRotationMode();
+                    final Orientation orientation = rotationMode.fromValue(metadata);
+                    final Vec3 localHit = BlockSpaceTransform.instance.mapWorldToBlock(orientation, hitX, hitY, hitZ);
+                    final Entry<AxisAlignedBB, IShapeManipulator> clickBox = findClickBox(localHit);
+                    if (clickBox != null) return clickBox.getValue().activate(guide, playerMP);
+                }
+
+                final ItemStack heldStack = playerMP.getHeldItem();
+                if (heldStack != null) {
+                    if (guide.onItemUse(playerMP, heldStack, side, hitX, hitY, hitZ)) return true;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void randomDisplayTick(World world, int x, int y, int z, Random random) {
+        world.spawnParticle("smoke", x + 0.5f, y + 0.7f, z + 0.5f, 0.0D, 0.0D, 0.0D);
+        world.spawnParticle("flame", x + 0.5f, y + 0.7f, z + 0.5f, 0.0D, 0.0D, 0.0D);
+    }
 }

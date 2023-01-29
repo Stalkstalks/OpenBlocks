@@ -2,16 +2,18 @@ package openblocks.client.renderer.tileentity.tank;
 
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
+
 import openmods.utils.Diagonal;
 
 public interface ITankRenderFluidData {
-	public FluidStack getFluid();
 
-	public boolean hasFluid();
+    public FluidStack getFluid();
 
-	public boolean shouldRenderFluidWall(ForgeDirection side);
+    public boolean hasFluid();
 
-	public float getCornerFluidLevel(Diagonal diagonal, float time);
+    public boolean shouldRenderFluidWall(ForgeDirection side);
 
-	public float getCenterFluidLevel(float time);
+    public float getCornerFluidLevel(Diagonal diagonal, float time);
+
+    public float getCenterFluidLevel(float time);
 }

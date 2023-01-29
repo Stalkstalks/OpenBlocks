@@ -1,8 +1,8 @@
 package openblocks.common.tileentity;
 
-import com.google.common.collect.Lists;
 import java.util.Collections;
 import java.util.List;
+
 import net.minecraft.block.Block;
 import net.minecraft.command.IEntitySelector;
 import net.minecraft.entity.Entity;
@@ -17,6 +17,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.IFluidHandler;
+
 import openblocks.OpenBlocks;
 import openblocks.client.gui.GuiVacuumHopper;
 import openblocks.common.LiquidXpUtils;
@@ -44,227 +45,238 @@ import openmods.utils.bitmap.IReadableBitMap;
 import openmods.utils.bitmap.IRpcDirectionBitMap;
 import openmods.utils.bitmap.IWriteableBitMap;
 
-public class TileEntityVacuumHopper extends SyncedTileEntity implements IInventoryProvider, IActivateAwareTile, IHasGui, IEntitySelector, INeighbourAwareTile {
+import com.google.common.collect.Lists;
 
-	public static final int TANK_CAPACITY = LiquidXpUtils.xpToLiquidRatio(EnchantmentUtils.getExperienceForLevel(5));
+public class TileEntityVacuumHopper extends SyncedTileEntity
+        implements IInventoryProvider, IActivateAwareTile, IHasGui, IEntitySelector, INeighbourAwareTile {
 
-	private SyncableTank tank;
-	public SyncableSides xpOutputs;
-	public SyncableSides itemOutputs;
-	public SyncableBoolean vacuumDisabled;
+    public static final int TANK_CAPACITY = LiquidXpUtils.xpToLiquidRatio(EnchantmentUtils.getExperienceForLevel(5));
 
-	private boolean needsTankUpdate;
+    private SyncableTank tank;
+    public SyncableSides xpOutputs;
+    public SyncableSides itemOutputs;
+    public SyncableBoolean vacuumDisabled;
 
-	private final GenericInventory inventory = registerInventoryCallback(new TileEntityInventory(this, "vacuumhopper", true, 10));
+    private boolean needsTankUpdate;
 
-	@IncludeInterface(ISidedInventory.class)
-	private final SidedInventoryAdapter sided = new SidedInventoryAdapter(inventory);
+    private final GenericInventory inventory = registerInventoryCallback(
+            new TileEntityInventory(this, "vacuumhopper", true, 10));
 
-	@IncludeInterface
-	private final IFluidHandler tankWrapper = new SidedFluidHandler.Source(xpOutputs, tank);
+    @IncludeInterface(ISidedInventory.class)
+    private final SidedInventoryAdapter sided = new SidedInventoryAdapter(inventory);
 
-	@Override
-	protected void createSyncedFields() {
-		tank = new SyncableTank(TANK_CAPACITY, OpenBlocks.Fluids.xpJuice);
-		xpOutputs = new SyncableSides();
-		itemOutputs = new SyncableSides();
-		vacuumDisabled = new SyncableBoolean();
-	}
+    @IncludeInterface
+    private final IFluidHandler tankWrapper = new SidedFluidHandler.Source(xpOutputs, tank);
 
-	public TileEntityVacuumHopper() {
-		sided.registerAllSlots(itemOutputs, false, true);
-	}
+    @Override
+    protected void createSyncedFields() {
+        tank = new SyncableTank(TANK_CAPACITY, OpenBlocks.Fluids.xpJuice);
+        xpOutputs = new SyncableSides();
+        itemOutputs = new SyncableSides();
+        vacuumDisabled = new SyncableBoolean();
+    }
 
-	public IReadableBitMap<ForgeDirection> getReadableXpOutputs() {
-		return xpOutputs;
-	}
+    public TileEntityVacuumHopper() {
+        sided.registerAllSlots(itemOutputs, false, true);
+    }
 
-	public IWriteableBitMap<ForgeDirection> getWriteableXpOutputs() {
-		return BitMapUtils.createRpcAdapter(createRpcProxy(xpOutputs, IRpcDirectionBitMap.class));
-	}
+    public IReadableBitMap<ForgeDirection> getReadableXpOutputs() {
+        return xpOutputs;
+    }
 
-	public IReadableBitMap<ForgeDirection> getReadableItemOutputs() {
-		return itemOutputs;
-	}
+    public IWriteableBitMap<ForgeDirection> getWriteableXpOutputs() {
+        return BitMapUtils.createRpcAdapter(createRpcProxy(xpOutputs, IRpcDirectionBitMap.class));
+    }
 
-	public IWriteableBitMap<ForgeDirection> getWriteableItemOutputs() {
-		return BitMapUtils.createRpcAdapter(createRpcProxy(itemOutputs, IRpcDirectionBitMap.class));
-	}
+    public IReadableBitMap<ForgeDirection> getReadableItemOutputs() {
+        return itemOutputs;
+    }
 
-	public IValueProvider<FluidStack> getFluidProvider() {
-		return tank;
-	}
+    public IWriteableBitMap<ForgeDirection> getWriteableItemOutputs() {
+        return BitMapUtils.createRpcAdapter(createRpcProxy(itemOutputs, IRpcDirectionBitMap.class));
+    }
 
-	@Override
-	public boolean isEntityApplicable(Entity entity) {
-		if (entity.isDead) return false;
+    public IValueProvider<FluidStack> getFluidProvider() {
+        return tank;
+    }
 
-		if (entity instanceof EntityItemProjectile) return entity.motionY < 0.01;
+    @Override
+    public boolean isEntityApplicable(Entity entity) {
+        if (entity.isDead) return false;
 
-		if (entity instanceof EntityItem) {
-			ItemStack stack = ((EntityItem)entity).getEntityItem();
-			return ItemDistribution.testInventoryInsertion(inventory, stack) > 0;
-		}
+        if (entity instanceof EntityItemProjectile) return entity.motionY < 0.01;
 
-		if (entity instanceof EntityXPOrb) return tank.getSpace() > 0;
+        if (entity instanceof EntityItem) {
+            ItemStack stack = ((EntityItem) entity).getEntityItem();
+            return ItemDistribution.testInventoryInsertion(inventory, stack) > 0;
+        }
 
-		return false;
-	}
+        if (entity instanceof EntityXPOrb) return tank.getSpace() > 0;
 
-	@Override
-	public void updateEntity() {
-		super.updateEntity();
+        return false;
+    }
 
-		if (vacuumDisabled.get()) return;
+    @Override
+    public void updateEntity() {
+        super.updateEntity();
 
-		if (worldObj.isRemote) {
-			worldObj.spawnParticle("portal", xCoord + 0.5, yCoord + 0.5, zCoord + 0.5, worldObj.rand.nextDouble() - 0.5, worldObj.rand.nextDouble() - 1.0, worldObj.rand.nextDouble() - 0.5);
-		}
+        if (vacuumDisabled.get()) return;
 
-		@SuppressWarnings("unchecked")
-		List<Entity> interestingItems = worldObj.selectEntitiesWithinAABB(Entity.class, getBB().expand(3, 3, 3), this);
+        if (worldObj.isRemote) {
+            worldObj.spawnParticle(
+                    "portal",
+                    xCoord + 0.5,
+                    yCoord + 0.5,
+                    zCoord + 0.5,
+                    worldObj.rand.nextDouble() - 0.5,
+                    worldObj.rand.nextDouble() - 1.0,
+                    worldObj.rand.nextDouble() - 0.5);
+        }
 
-		boolean needsSync = false;
+        @SuppressWarnings("unchecked")
+        List<Entity> interestingItems = worldObj.selectEntitiesWithinAABB(Entity.class, getBB().expand(3, 3, 3), this);
 
-		for (Entity entity : interestingItems) {
-			double x = (xCoord + 0.5D - entity.posX);
-			double y = (yCoord + 0.5D - entity.posY);
-			double z = (zCoord + 0.5D - entity.posZ);
+        boolean needsSync = false;
 
-			double distance = Math.sqrt(x * x + y * y + z * z);
-			if (distance < 1.1) {
-				needsSync |= onEntityCollidedWithBlock(entity);
-			} else {
-				double var11 = 1.0 - distance / 15.0;
+        for (Entity entity : interestingItems) {
+            double x = (xCoord + 0.5D - entity.posX);
+            double y = (yCoord + 0.5D - entity.posY);
+            double z = (zCoord + 0.5D - entity.posZ);
 
-				if (var11 > 0.0D) {
-					var11 *= var11;
-					entity.motionX += x / distance * var11 * 0.05;
-					entity.motionY += y / distance * var11 * 0.2;
-					entity.motionZ += z / distance * var11 * 0.05;
-				}
-			}
+            double distance = Math.sqrt(x * x + y * y + z * z);
+            if (distance < 1.1) {
+                needsSync |= onEntityCollidedWithBlock(entity);
+            } else {
+                double var11 = 1.0 - distance / 15.0;
 
-		}
+                if (var11 > 0.0D) {
+                    var11 *= var11;
+                    entity.motionX += x / distance * var11 * 0.05;
+                    entity.motionY += y / distance * var11 * 0.2;
+                    entity.motionZ += z / distance * var11 * 0.05;
+                }
+            }
 
-		if (!worldObj.isRemote) {
-			needsSync |= outputToNeighbors();
-			if (needsSync) sync();
-		}
-	}
+        }
 
-	private boolean outputToNeighbors() {
-		if (OpenMods.proxy.getTicks(worldObj) % 10 == 0) {
-			if (needsTankUpdate) {
-				tank.updateNeighbours(worldObj, getPosition());
-				needsTankUpdate = false;
-			}
+        if (!worldObj.isRemote) {
+            needsSync |= outputToNeighbors();
+            if (needsSync) sync();
+        }
+    }
 
-			tank.distributeToSides(50, worldObj, getPosition(), xpOutputs.getValue());
-			autoInventoryOutput();
-			return true;
-		}
+    private boolean outputToNeighbors() {
+        if (OpenMods.proxy.getTicks(worldObj) % 10 == 0) {
+            if (needsTankUpdate) {
+                tank.updateNeighbours(worldObj, getPosition());
+                needsTankUpdate = false;
+            }
 
-		return false;
-	}
+            tank.distributeToSides(50, worldObj, getPosition(), xpOutputs.getValue());
+            autoInventoryOutput();
+            return true;
+        }
 
-	private void autoInventoryOutput() {
-		for (int i = 0; i < inventory.getSizeInventory(); i++) {
-			if (inventory.getStackInSlot(i) != null) {
-				getItemOutOfSlot(i);
-				break;
-			}
-		}
-	}
+        return false;
+    }
 
-	private void getItemOutOfSlot(int slot) {
-		final List<ForgeDirection> outputSides = Lists.newArrayList(itemOutputs.getValue());
-		Collections.shuffle(outputSides);
+    private void autoInventoryOutput() {
+        for (int i = 0; i < inventory.getSizeInventory(); i++) {
+            if (inventory.getStackInSlot(i) != null) {
+                getItemOutOfSlot(i);
+                break;
+            }
+        }
+    }
 
-		for (ForgeDirection output : outputSides) {
-			TileEntity tileOnSurface = getTileInDirection(output);
-			if (ItemDistribution.moveItemInto(inventory, slot, tileOnSurface, output, 64, true) > 0) return;
-		}
-	}
+    private void getItemOutOfSlot(int slot) {
+        final List<ForgeDirection> outputSides = Lists.newArrayList(itemOutputs.getValue());
+        Collections.shuffle(outputSides);
 
-	@Override
-	public Object getServerGui(EntityPlayer player) {
-		return new ContainerVacuumHopper(player.inventory, this);
-	}
+        for (ForgeDirection output : outputSides) {
+            TileEntity tileOnSurface = getTileInDirection(output);
+            if (ItemDistribution.moveItemInto(inventory, slot, tileOnSurface, output, 64, true) > 0) return;
+        }
+    }
 
-	@Override
-	public Object getClientGui(EntityPlayer player) {
-		return new GuiVacuumHopper(new ContainerVacuumHopper(player.inventory, this));
-	}
+    @Override
+    public Object getServerGui(EntityPlayer player) {
+        return new ContainerVacuumHopper(player.inventory, this);
+    }
 
-	@Override
-	public boolean canOpenGui(EntityPlayer player) {
-		return true;
-	}
+    @Override
+    public Object getClientGui(EntityPlayer player) {
+        return new GuiVacuumHopper(new ContainerVacuumHopper(player.inventory, this));
+    }
 
-	@Override
-	public boolean onBlockActivated(EntityPlayer player, int side, float hitX, float hitY, float hitZ) {
-		if (player.isSneaking()) {
-			if (player.inventory.getStackInSlot(player.inventory.currentItem) == null) {
-				vacuumDisabled.toggle();
-				return true;
-			}
-		}
-		return false;
-	}
+    @Override
+    public boolean canOpenGui(EntityPlayer player) {
+        return true;
+    }
 
-	public boolean onEntityCollidedWithBlock(Entity entity) {
-		if (!worldObj.isRemote) {
-			if (entity instanceof EntityItem && !entity.isDead) {
-				EntityItem item = (EntityItem)entity;
-				ItemStack stack = item.getEntityItem().copy();
-				ItemDistribution.insertItemIntoInventory(inventory, stack);
-				if (stack.stackSize == 0) {
-					item.setDead();
-				} else {
-					item.setEntityItemStack(stack);
-				}
-				return true;
-			} else if (entity instanceof EntityXPOrb) {
-				if (tank.getSpace() > 0) {
-					EntityXPOrb orb = (EntityXPOrb)entity;
-					int xpAmount = LiquidXpUtils.xpToLiquidRatio(orb.getXpValue());
-					FluidStack newFluid = new FluidStack(OpenBlocks.Fluids.xpJuice, xpAmount);
-					tank.fill(newFluid, true);
-					entity.setDead();
-					return true;
-				}
-			}
-		}
+    @Override
+    public boolean onBlockActivated(EntityPlayer player, int side, float hitX, float hitY, float hitZ) {
+        if (player.isSneaking()) {
+            if (player.inventory.getStackInSlot(player.inventory.currentItem) == null) {
+                vacuumDisabled.toggle();
+                return true;
+            }
+        }
+        return false;
+    }
 
-		return false;
-	}
+    public boolean onEntityCollidedWithBlock(Entity entity) {
+        if (!worldObj.isRemote) {
+            if (entity instanceof EntityItem && !entity.isDead) {
+                EntityItem item = (EntityItem) entity;
+                ItemStack stack = item.getEntityItem().copy();
+                ItemDistribution.insertItemIntoInventory(inventory, stack);
+                if (stack.stackSize == 0) {
+                    item.setDead();
+                } else {
+                    item.setEntityItemStack(stack);
+                }
+                return true;
+            } else if (entity instanceof EntityXPOrb) {
+                if (tank.getSpace() > 0) {
+                    EntityXPOrb orb = (EntityXPOrb) entity;
+                    int xpAmount = LiquidXpUtils.xpToLiquidRatio(orb.getXpValue());
+                    FluidStack newFluid = new FluidStack(OpenBlocks.Fluids.xpJuice, xpAmount);
+                    tank.fill(newFluid, true);
+                    entity.setDead();
+                    return true;
+                }
+            }
+        }
 
-	@Override
-	public IInventory getInventory() {
-		return inventory;
-	}
+        return false;
+    }
 
-	@Override
-	public void writeToNBT(NBTTagCompound tag) {
-		super.writeToNBT(tag);
-		inventory.writeToNBT(tag);
-	}
+    @Override
+    public IInventory getInventory() {
+        return inventory;
+    }
 
-	@Override
-	public void readFromNBT(NBTTagCompound tag) {
-		super.readFromNBT(tag);
-		inventory.readFromNBT(tag);
-	}
+    @Override
+    public void writeToNBT(NBTTagCompound tag) {
+        super.writeToNBT(tag);
+        inventory.writeToNBT(tag);
+    }
 
-	@Override
-	public void validate() {
-		super.validate();
-		this.needsTankUpdate = true;
-	}
+    @Override
+    public void readFromNBT(NBTTagCompound tag) {
+        super.readFromNBT(tag);
+        inventory.readFromNBT(tag);
+    }
 
-	@Override
-	public void onNeighbourChanged(Block block) {
-		this.needsTankUpdate = true;
-	}
+    @Override
+    public void validate() {
+        super.validate();
+        this.needsTankUpdate = true;
+    }
+
+    @Override
+    public void onNeighbourChanged(Block block) {
+        this.needsTankUpdate = true;
+    }
 }

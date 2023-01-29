@@ -6,18 +6,18 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 public class BlockHeal extends OpenBlock {
 
-	public BlockHeal() {
-		super(Material.rock);
-	}
+    public BlockHeal() {
+        super(Material.rock);
+    }
 
-	@Override
-	public boolean canBeReplacedByLeaves(IBlockAccess world, int x, int y, int z) {
-		return false;
-	}
+    @Override
+    public boolean canBeReplacedByLeaves(IBlockAccess world, int x, int y, int z) {
+        return false;
+    }
 
-	@Override
-	public boolean isFlammable(IBlockAccess world, int x, int y, int z, ForgeDirection face) {
-		return false;
-	}
+    @Override
+    public boolean isFlammable(IBlockAccess world, int x, int y, int z, ForgeDirection face) {
+        return false;
+    }
 
 }

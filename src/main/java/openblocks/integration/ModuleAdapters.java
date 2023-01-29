@@ -9,29 +9,30 @@ import openperipheral.api.adapter.IPeripheralAdapterRegistry;
 
 public class ModuleAdapters extends IntegrationModule {
 
-	@ApiHolder
-	private static IPeripheralAdapterRegistry adapterRegistry;
+    @ApiHolder
+    private static IPeripheralAdapterRegistry adapterRegistry;
 
-	public ModuleAdapters() {
-		super(modLoaded(Mods.OPENPERIPHERALCORE));
-	}
+    public ModuleAdapters() {
+        super(modLoaded(Mods.OPENPERIPHERALCORE));
+    }
 
-	@Override
-	public String name() {
-		return "OpenBlocks adapters for OpenPeripheral";
-	}
+    @Override
+    public String name() {
+        return "OpenBlocks adapters for OpenPeripheral";
+    }
 
-	@Override
-	public void load() {
-		LoadHack.load();
-	}
+    @Override
+    public void load() {
+        LoadHack.load();
+    }
 
-	private static class LoadHack {
-		private static void load() {
-			adapterRegistry.register(new AdapterVillageHighlighter());
-			adapterRegistry.register(new AdapterDonationStation());
-			adapterRegistry.register(new AdapterCannon());
-			adapterRegistry.register(new AdapterProjector());
-		}
-	}
+    private static class LoadHack {
+
+        private static void load() {
+            adapterRegistry.register(new AdapterVillageHighlighter());
+            adapterRegistry.register(new AdapterDonationStation());
+            adapterRegistry.register(new AdapterCannon());
+            adapterRegistry.register(new AdapterProjector());
+        }
+    }
 }

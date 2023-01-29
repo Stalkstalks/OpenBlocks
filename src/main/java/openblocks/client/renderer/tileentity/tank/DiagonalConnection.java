@@ -1,101 +1,103 @@
 package openblocks.client.renderer.tileentity.tank;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import net.minecraftforge.fluids.FluidStack;
+
 import openblocks.common.tileentity.TileEntityTank;
 import openmods.utils.Diagonal;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 public class DiagonalConnection extends RenderConnection {
 
-	private static class Group {
-		private final FluidStack fluid;
-		private final Set<Diagonal> diagonals = EnumSet.noneOf(Diagonal.class);
+    private static class Group {
 
-		private float sum;
+        private final FluidStack fluid;
+        private final Set<Diagonal> diagonals = EnumSet.noneOf(Diagonal.class);
 
-		public Group(FluidStack fluid) {
-			this.fluid = fluid;
-		}
+        private float sum;
 
-		public boolean match(FluidStack stack) {
-			return fluid.isFluidEqual(stack);
-		}
+        public Group(FluidStack fluid) {
+            this.fluid = fluid;
+        }
 
-		public void addDiagonal(Diagonal diagonal, FluidStack stack) {
-			diagonals.add(diagonal);
-			sum += stack.amount;
-		}
+        public boolean match(FluidStack stack) {
+            return fluid.isFluidEqual(stack);
+        }
 
-		public void update(float[] height) {
-			final float average = TankRenderUtils.clampLevel((sum / diagonals.size()) / TileEntityTank.getTankCapacity());
+        public void addDiagonal(Diagonal diagonal, FluidStack stack) {
+            diagonals.add(diagonal);
+            sum += stack.amount;
+        }
 
-			for (Diagonal d : diagonals)
-				height[d.ordinal()] = average;
-		}
-	}
+        public void update(float[] height) {
+            final float average = TankRenderUtils
+                    .clampLevel((sum / diagonals.size()) / TileEntityTank.getTankCapacity());
 
-	private final float phase;
+            for (Diagonal d : diagonals) height[d.ordinal()] = average;
+        }
+    }
 
-	private final Map<Diagonal, FluidStack> fluids = Maps.newEnumMap(Diagonal.class);
+    private final float phase;
 
-	private final float[] height = new float[4];
+    private final Map<Diagonal, FluidStack> fluids = Maps.newEnumMap(Diagonal.class);
 
-	public DiagonalConnection(float phase, DoubledCoords coords) {
-		super(coords);
-		this.phase = phase;
-	}
+    private final float[] height = new float[4];
 
-	public float getRenderHeight(Diagonal corner, float time) {
-		float h = height[corner.ordinal()];
-		if (h <= 0) return 0;
+    public DiagonalConnection(float phase, DoubledCoords coords) {
+        super(coords);
+        this.phase = phase;
+    }
 
-		return TankRenderUtils.clampLevel(TankRenderUtils.calculateWaveAmplitude(time, phase) + h);
-	}
+    public float getRenderHeight(Diagonal corner, float time) {
+        float h = height[corner.ordinal()];
+        if (h <= 0) return 0;
 
-	public void updateFluid(Diagonal corner, FluidStack stack) {
-		fluids.put(corner, TankRenderUtils.safeCopy(stack));
-		recalculate();
-	}
+        return TankRenderUtils.clampLevel(TankRenderUtils.calculateWaveAmplitude(time, phase) + h);
+    }
 
-	public void clearFluid(Diagonal corner) {
-		fluids.remove(corner);
-		recalculate();
-	}
+    public void updateFluid(Diagonal corner, FluidStack stack) {
+        fluids.put(corner, TankRenderUtils.safeCopy(stack));
+        recalculate();
+    }
 
-	private static DiagonalConnection.Group findGroup(List<DiagonalConnection.Group> entries, FluidStack stack) {
-		for (DiagonalConnection.Group group : entries)
-			if (group.match(stack)) return group;
+    public void clearFluid(Diagonal corner) {
+        fluids.remove(corner);
+        recalculate();
+    }
 
-		DiagonalConnection.Group newGroup = new Group(stack);
-		entries.add(newGroup);
-		return newGroup;
-	}
+    private static DiagonalConnection.Group findGroup(List<DiagonalConnection.Group> entries, FluidStack stack) {
+        for (DiagonalConnection.Group group : entries) if (group.match(stack)) return group;
 
-	private void recalculate() {
-		forceZero();
+        DiagonalConnection.Group newGroup = new Group(stack);
+        entries.add(newGroup);
+        return newGroup;
+    }
 
-		List<DiagonalConnection.Group> groups = Lists.newArrayList();
-		for (Diagonal diagonal : Diagonal.VALUES) {
-			if (!fluids.containsKey(diagonal)) continue;
+    private void recalculate() {
+        forceZero();
 
-			FluidStack stack = fluids.get(diagonal);
+        List<DiagonalConnection.Group> groups = Lists.newArrayList();
+        for (Diagonal diagonal : Diagonal.VALUES) {
+            if (!fluids.containsKey(diagonal)) continue;
 
-			if (stack == null || stack.amount <= 0) return;
+            FluidStack stack = fluids.get(diagonal);
 
-			DiagonalConnection.Group e = findGroup(groups, stack);
-			e.addDiagonal(diagonal, stack);
-		}
+            if (stack == null || stack.amount <= 0) return;
 
-		for (DiagonalConnection.Group group : groups)
-			group.update(height);
-	}
+            DiagonalConnection.Group e = findGroup(groups, stack);
+            e.addDiagonal(diagonal, stack);
+        }
 
-	private void forceZero() {
-		height[0] = height[1] = height[2] = height[3] = 0;
-	}
+        for (DiagonalConnection.Group group : groups) group.update(height);
+    }
+
+    private void forceZero() {
+        height[0] = height[1] = height[2] = height[3] = 0;
+    }
 }

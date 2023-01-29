@@ -4,6 +4,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+
 import openblocks.OpenBlocks.Items;
 import openblocks.client.gui.GuiDrawingTable;
 import openblocks.common.Stencil;
@@ -19,62 +20,63 @@ import openmods.tileentity.OpenTileEntity;
 
 public class TileEntityDrawingTable extends OpenTileEntity implements IHasGui, IInventoryProvider, IStencilCrafter {
 
-	private final GenericInventory inventory = registerInventoryCallback(new TileEntityInventory(this, "drawingtable", true, 1) {
+    private final GenericInventory inventory = registerInventoryCallback(
+            new TileEntityInventory(this, "drawingtable", true, 1) {
 
-		@Override
-		public boolean isItemValidForSlot(int i, ItemStack itemstack) {
-			return i == 0 && (itemstack == null || MetasGeneric.unpreparedStencil.isA(itemstack));
-		}
+                @Override
+                public boolean isItemValidForSlot(int i, ItemStack itemstack) {
+                    return i == 0 && (itemstack == null || MetasGeneric.unpreparedStencil.isA(itemstack));
+                }
 
-	});
+            });
 
-	public TileEntityDrawingTable() {}
+    public TileEntityDrawingTable() {}
 
-	@Override
-	public Object getServerGui(EntityPlayer player) {
-		return new ContainerDrawingTable(player.inventory, this);
-	}
+    @Override
+    public Object getServerGui(EntityPlayer player) {
+        return new ContainerDrawingTable(player.inventory, this);
+    }
 
-	@Override
-	public Object getClientGui(EntityPlayer player) {
-		return new GuiDrawingTable(new ContainerDrawingTable(player.inventory, this));
-	}
+    @Override
+    public Object getClientGui(EntityPlayer player) {
+        return new GuiDrawingTable(new ContainerDrawingTable(player.inventory, this));
+    }
 
-	@Override
-	public boolean canOpenGui(EntityPlayer player) {
-		return true;
-	}
+    @Override
+    public boolean canOpenGui(EntityPlayer player) {
+        return true;
+    }
 
-	@Override
-	public boolean canUpdate() {
-		return false;
-	}
+    @Override
+    public boolean canUpdate() {
+        return false;
+    }
 
-	@Override
-	@IncludeInterface
-	public IInventory getInventory() {
-		return inventory;
-	}
+    @Override
+    @IncludeInterface
+    public IInventory getInventory() {
+        return inventory;
+    }
 
-	@Override
-	public void writeToNBT(NBTTagCompound tag) {
-		super.writeToNBT(tag);
-		inventory.writeToNBT(tag);
-	}
+    @Override
+    public void writeToNBT(NBTTagCompound tag) {
+        super.writeToNBT(tag);
+        inventory.writeToNBT(tag);
+    }
 
-	@Override
-	public void readFromNBT(NBTTagCompound tag) {
-		super.readFromNBT(tag);
-		inventory.readFromNBT(tag);
-	}
+    @Override
+    public void readFromNBT(NBTTagCompound tag) {
+        super.readFromNBT(tag);
+        inventory.readFromNBT(tag);
+    }
 
-	@Override
-	public void craft(Stencil stencil) {
-		ItemStack stack = inventory.getStackInSlot(0);
-		if (stack != null && MetasGeneric.unpreparedStencil.isA(stack)) {
-			ItemStack stencilItem = new ItemStack(Items.stencil, 1, stencil.ordinal());
-			stencilItem.stackSize = stack.stackSize;
-			inventory.setInventorySlotContents(0, stencilItem);
-		}
-	}
+    @Override
+    public void craft(Stencil stencil) {
+        ItemStack stack = inventory.getStackInSlot(0);
+        if (stack != null && MetasGeneric.unpreparedStencil.isA(stack)) {
+            ItemStack stencilItem = new ItemStack(Items.stencil, 1, stencil.ordinal());
+            stencilItem.stackSize = stack.stackSize;
+            inventory.setInventorySlotContents(0, stencilItem);
+        }
+    }
 }

@@ -4,29 +4,30 @@ import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelRenderer;
 
 public class ModelFlag extends ModelBase {
-	// fields
-	ModelRenderer pole;
 
-	public ModelFlag() {
-		textureWidth = 32;
-		textureHeight = 32;
+    // fields
+    ModelRenderer pole;
 
-		pole = new ModelRenderer(this, 0, 0);
-		pole.addBox(-0.5F, 0F, -0.5F, 1, 16, 1);
-		pole.setRotationPoint(0F, 0F, 0F);
-		pole.setTextureSize(32, 32);
-		pole.mirror = true;
-		setRotation(pole, 0F, 0F, 0F);
-	}
+    public ModelFlag() {
+        textureWidth = 32;
+        textureHeight = 32;
 
-	public void render(float f) {
-		pole.render(0.0625F);
-	}
+        pole = new ModelRenderer(this, 0, 0);
+        pole.addBox(-0.5F, 0F, -0.5F, 1, 16, 1);
+        pole.setRotationPoint(0F, 0F, 0F);
+        pole.setTextureSize(32, 32);
+        pole.mirror = true;
+        setRotation(pole, 0F, 0F, 0F);
+    }
 
-	private static void setRotation(ModelRenderer model, float x, float y, float z) {
-		model.rotateAngleX = x;
-		model.rotateAngleY = y;
-		model.rotateAngleZ = z;
-	}
+    public void render(float f) {
+        pole.render(0.0625F);
+    }
+
+    private static void setRotation(ModelRenderer model, float x, float y, float z) {
+        model.rotateAngleX = x;
+        model.rotateAngleY = y;
+        model.rotateAngleZ = z;
+    }
 
 }

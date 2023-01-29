@@ -1,6 +1,7 @@
 package openblocks.client.renderer.entity;
 
 import java.util.Random;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -12,6 +13,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.ForgeDirection;
+
 import openblocks.client.model.ModelCartographer;
 import openblocks.client.renderer.entity.EntitySelectionHandler.ISelectionRenderer;
 import openblocks.common.entity.EntityCartographer;
@@ -19,200 +21,202 @@ import openblocks.common.entity.EntityCartographer.MapJobs;
 import openmods.renderer.DisplayListWrapper;
 import openmods.utils.BlockUtils;
 import openmods.utils.render.RenderUtils;
+
 import org.lwjgl.opengl.GL11;
 
 public class EntityCartographerRenderer extends Render {
 
-	private static final double Z_FIGHTER = 0.0001;
+    private static final double Z_FIGHTER = 0.0001;
 
-	private static final double CONE_START = 0.075;
-	private static final double CONE_END = 0.3;
-	private static final double BASE_SIZE = 0.125;
-	private static final double MAP_SIZE = 0.08;
+    private static final double CONE_START = 0.075;
+    private static final double CONE_END = 0.3;
+    private static final double BASE_SIZE = 0.125;
+    private static final double MAP_SIZE = 0.08;
 
-	private static final double INTERSECTION_DIST = 2.5 / 16.0;
-	private static final double INTERSECTION_SIZE = BASE_SIZE * (INTERSECTION_DIST - CONE_START) / (CONE_END - CONE_START);
+    private static final double INTERSECTION_DIST = 2.5 / 16.0;
+    private static final double INTERSECTION_SIZE = BASE_SIZE * (INTERSECTION_DIST - CONE_START)
+            / (CONE_END - CONE_START);
 
-	private final static ResourceLocation TEXTURE = new ResourceLocation("openblocks:textures/models/cartographer.png");
+    private final static ResourceLocation TEXTURE = new ResourceLocation("openblocks:textures/models/cartographer.png");
 
-	private static final ModelCartographer MODEL = new ModelCartographer();
+    private static final ModelCartographer MODEL = new ModelCartographer();
 
-	private static final DisplayListWrapper CONE_DISPLAY = new DisplayListWrapper() {
-		@Override
-		public void compile() {
-			GL11.glDisable(GL11.GL_LIGHTING);
-			GL11.glDisable(GL11.GL_TEXTURE_2D);
+    private static final DisplayListWrapper CONE_DISPLAY = new DisplayListWrapper() {
 
-			GL11.glBegin(GL11.GL_QUADS);
-			GL11.glColor4d(1, 1, 1, 1);
-			GL11.glVertex3d(-INTERSECTION_SIZE, -INTERSECTION_SIZE, -INTERSECTION_DIST - Z_FIGHTER);
-			GL11.glVertex3d(-INTERSECTION_SIZE, +INTERSECTION_SIZE, -INTERSECTION_DIST - Z_FIGHTER);
-			GL11.glVertex3d(+INTERSECTION_SIZE, +INTERSECTION_SIZE, -INTERSECTION_DIST - Z_FIGHTER);
-			GL11.glVertex3d(+INTERSECTION_SIZE, -INTERSECTION_SIZE, -INTERSECTION_DIST - Z_FIGHTER);
-			GL11.glEnd();
+        @Override
+        public void compile() {
+            GL11.glDisable(GL11.GL_LIGHTING);
+            GL11.glDisable(GL11.GL_TEXTURE_2D);
 
-			GL11.glEnable(GL11.GL_BLEND);
-			GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glBegin(GL11.GL_QUADS);
+            GL11.glColor4d(1, 1, 1, 1);
+            GL11.glVertex3d(-INTERSECTION_SIZE, -INTERSECTION_SIZE, -INTERSECTION_DIST - Z_FIGHTER);
+            GL11.glVertex3d(-INTERSECTION_SIZE, +INTERSECTION_SIZE, -INTERSECTION_DIST - Z_FIGHTER);
+            GL11.glVertex3d(+INTERSECTION_SIZE, +INTERSECTION_SIZE, -INTERSECTION_DIST - Z_FIGHTER);
+            GL11.glVertex3d(+INTERSECTION_SIZE, -INTERSECTION_SIZE, -INTERSECTION_DIST - Z_FIGHTER);
+            GL11.glEnd();
 
-			GL11.glBegin(GL11.GL_TRIANGLE_FAN);
-			GL11.glColor4d(0, 1, 1, 0.125);
-			GL11.glVertex3d(0, 0, -CONE_START);
-			GL11.glVertex3d(-BASE_SIZE, -BASE_SIZE, -CONE_END);
-			GL11.glVertex3d(+BASE_SIZE, -BASE_SIZE, -CONE_END);
-			GL11.glVertex3d(+BASE_SIZE, +BASE_SIZE, -CONE_END);
-			GL11.glVertex3d(-BASE_SIZE, +BASE_SIZE, -CONE_END);
-			GL11.glVertex3d(-BASE_SIZE, -BASE_SIZE, -CONE_END);
-			GL11.glEnd();
+            GL11.glEnable(GL11.GL_BLEND);
+            GL11.glDisable(GL11.GL_CULL_FACE);
 
-			GL11.glEnable(GL11.GL_CULL_FACE);
-			GL11.glDisable(GL11.GL_BLEND);
-			GL11.glEnable(GL11.GL_TEXTURE_2D);
-		}
-	};
+            GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+            GL11.glColor4d(0, 1, 1, 0.125);
+            GL11.glVertex3d(0, 0, -CONE_START);
+            GL11.glVertex3d(-BASE_SIZE, -BASE_SIZE, -CONE_END);
+            GL11.glVertex3d(+BASE_SIZE, -BASE_SIZE, -CONE_END);
+            GL11.glVertex3d(+BASE_SIZE, +BASE_SIZE, -CONE_END);
+            GL11.glVertex3d(-BASE_SIZE, +BASE_SIZE, -CONE_END);
+            GL11.glVertex3d(-BASE_SIZE, -BASE_SIZE, -CONE_END);
+            GL11.glEnd();
 
-	public static class Selection implements ISelectionRenderer<EntityCartographer> {
+            GL11.glEnable(GL11.GL_CULL_FACE);
+            GL11.glDisable(GL11.GL_BLEND);
+            GL11.glEnable(GL11.GL_TEXTURE_2D);
+        }
+    };
 
-		private static final Random RANDOM = new Random();
+    public static class Selection implements ISelectionRenderer<EntityCartographer> {
 
-		private DynamicTexture mapTextureData;
-		private ResourceLocation mapTextureLocation;
+        private static final Random RANDOM = new Random();
 
-		@Override
-		public void render(EntityCartographer e, EntityPlayer player, RenderGlobal context, float partialTickTime) {
-			if (RANDOM.nextFloat() < 0.1f) return;
-			GL11.glPushMatrix();
+        private DynamicTexture mapTextureData;
+        private ResourceLocation mapTextureLocation;
 
-			RenderUtils.translateToPlayer(e, partialTickTime);
+        @Override
+        public void render(EntityCartographer e, EntityPlayer player, RenderGlobal context, float partialTickTime) {
+            if (RANDOM.nextFloat() < 0.1f) return;
+            GL11.glPushMatrix();
 
-			ForgeDirection side = BlockUtils.get2dOrientation(player).getOpposite();
+            RenderUtils.translateToPlayer(e, partialTickTime);
 
-			switch (side) {
-				case EAST:
-					GL11.glRotated(-90, 0, 1, 0);
-					break;
-				case WEST:
-					GL11.glRotated(90, 0, 1, 0);
-					break;
-				case NORTH:
-					GL11.glRotated(0, 0, 1, 0);
-					break;
-				case SOUTH:
-					GL11.glRotated(180, 0, 1, 0);
-					break;
-				default:
-					break;
-			}
+            ForgeDirection side = BlockUtils.get2dOrientation(player).getOpposite();
 
-			GL11.glTranslated(0, -0.03, 0);
-			CONE_DISPLAY.render();
+            switch (side) {
+                case EAST:
+                    GL11.glRotated(-90, 0, 1, 0);
+                    break;
+                case WEST:
+                    GL11.glRotated(90, 0, 1, 0);
+                    break;
+                case NORTH:
+                    GL11.glRotated(0, 0, 1, 0);
+                    break;
+                case SOUTH:
+                    GL11.glRotated(180, 0, 1, 0);
+                    break;
+                default:
+                    break;
+            }
 
-			GL11.glColor4f(1, 1, 1, 1);
+            GL11.glTranslated(0, -0.03, 0);
+            CONE_DISPLAY.render();
 
-			final TextureManager textureManager = Minecraft.getMinecraft().getTextureManager();
+            GL11.glColor4f(1, 1, 1, 1);
 
-			if (e.isMapping.get()) {
-				GL11.glTranslated(+BASE_SIZE, +BASE_SIZE, -CONE_END);
-				bindMapTexture(textureManager);
-				renderProgressMap(e.jobs);
-			} else {
-				textureManager.bindTexture(TEXTURE);
-				drawBase();
-				GL11.glTranslated(+BASE_SIZE, +BASE_SIZE, -CONE_END - Z_FIGHTER);
-				renderText(e, context);
-			}
-			GL11.glPopMatrix();
-		}
+            final TextureManager textureManager = Minecraft.getMinecraft().getTextureManager();
 
-		private static void drawBase() {
-			GL11.glDisable(GL11.GL_CULL_FACE);
+            if (e.isMapping.get()) {
+                GL11.glTranslated(+BASE_SIZE, +BASE_SIZE, -CONE_END);
+                bindMapTexture(textureManager);
+                renderProgressMap(e.jobs);
+            } else {
+                textureManager.bindTexture(TEXTURE);
+                drawBase();
+                GL11.glTranslated(+BASE_SIZE, +BASE_SIZE, -CONE_END - Z_FIGHTER);
+                renderText(e, context);
+            }
+            GL11.glPopMatrix();
+        }
 
-			GL11.glBegin(GL11.GL_QUADS);
-			GL11.glColor4d(1, 1, 1, 1);
-			GL11.glTexCoord2d(0.0, 1.0);
-			GL11.glVertex3d(-BASE_SIZE, -BASE_SIZE, -CONE_END);
-			GL11.glTexCoord2d(0.5, 1.0);
-			GL11.glVertex3d(+BASE_SIZE, -BASE_SIZE, -CONE_END);
-			GL11.glTexCoord2d(0.5, 0.5);
-			GL11.glVertex3d(+BASE_SIZE, +BASE_SIZE, -CONE_END);
-			GL11.glTexCoord2d(0.0, 0.5);
-			GL11.glVertex3d(-BASE_SIZE, +BASE_SIZE, -CONE_END);
-			GL11.glEnd();
+        private static void drawBase() {
+            GL11.glDisable(GL11.GL_CULL_FACE);
 
-			GL11.glEnable(GL11.GL_CULL_FACE);
-		}
+            GL11.glBegin(GL11.GL_QUADS);
+            GL11.glColor4d(1, 1, 1, 1);
+            GL11.glTexCoord2d(0.0, 1.0);
+            GL11.glVertex3d(-BASE_SIZE, -BASE_SIZE, -CONE_END);
+            GL11.glTexCoord2d(0.5, 1.0);
+            GL11.glVertex3d(+BASE_SIZE, -BASE_SIZE, -CONE_END);
+            GL11.glTexCoord2d(0.5, 0.5);
+            GL11.glVertex3d(+BASE_SIZE, +BASE_SIZE, -CONE_END);
+            GL11.glTexCoord2d(0.0, 0.5);
+            GL11.glVertex3d(-BASE_SIZE, +BASE_SIZE, -CONE_END);
+            GL11.glEnd();
 
-		private static void renderText(EntityCartographer e, RenderGlobal context) {
-			GL11.glScaled(2 * BASE_SIZE / 16.0, 2 * BASE_SIZE / 16.0, 1);
-			FontRenderer fonts = Minecraft.getMinecraft().fontRenderer;
-			String coords = String.format("%d,%d", e.getNewMapCenterX(), e.getNewMapCenterZ());
-			int len = fonts.getStringWidth(coords);
-			double scaleV = 4.0 / 8.0;
-			int margin = 2;
-			double available = 16 - 2 * margin;
-			double scaleH = available / len;
-			double scale = Math.min(scaleV, scaleH);
+            GL11.glEnable(GL11.GL_CULL_FACE);
+        }
 
-			GL11.glTranslated(-margin, -2, 0);
-			GL11.glScaled(-scale, -scale, 1);
-			fonts.drawString(coords, 0, 0, 0);
-		}
+        private static void renderText(EntityCartographer e, RenderGlobal context) {
+            GL11.glScaled(2 * BASE_SIZE / 16.0, 2 * BASE_SIZE / 16.0, 1);
+            FontRenderer fonts = Minecraft.getMinecraft().fontRenderer;
+            String coords = String.format("%d,%d", e.getNewMapCenterX(), e.getNewMapCenterZ());
+            int len = fonts.getStringWidth(coords);
+            double scaleV = 4.0 / 8.0;
+            int margin = 2;
+            double available = 16 - 2 * margin;
+            double scaleH = available / len;
+            double scale = Math.min(scaleV, scaleH);
 
-		private void renderProgressMap(MapJobs segments) {
-			final int[] mapColors = mapTextureData.getTextureData();
+            GL11.glTranslated(-margin, -2, 0);
+            GL11.glScaled(-scale, -scale, 1);
+            fonts.drawString(coords, 0, 0, 0);
+        }
 
-			int bit = 0;
-			final int mapSize = segments.size();
+        private void renderProgressMap(MapJobs segments) {
+            final int[] mapColors = mapTextureData.getTextureData();
 
-			for (int row = 0; row < mapSize; row++)
-				for (int column = 0; column < mapSize; column++)
-					mapColors[row * 64 + column] = segments.test(bit++)? 0xFF00FF19 : 0xFF00600B;
+            int bit = 0;
+            final int mapSize = segments.size();
 
-			mapTextureData.updateDynamicTexture();
+            for (int row = 0; row < mapSize; row++) for (int column = 0; column < mapSize; column++)
+                mapColors[row * 64 + column] = segments.test(bit++) ? 0xFF00FF19 : 0xFF00600B;
 
-			float maxTex = mapSize / 64.0f;
-			GL11.glBegin(GL11.GL_QUADS);
-			GL11.glTexCoord2f(0, 0);
-			GL11.glVertex3d(-BASE_SIZE + MAP_SIZE, -BASE_SIZE + MAP_SIZE, 0);
+            mapTextureData.updateDynamicTexture();
 
-			GL11.glTexCoord2f(0, maxTex);
-			GL11.glVertex3d(-BASE_SIZE + MAP_SIZE, -BASE_SIZE - MAP_SIZE, 0);
+            float maxTex = mapSize / 64.0f;
+            GL11.glBegin(GL11.GL_QUADS);
+            GL11.glTexCoord2f(0, 0);
+            GL11.glVertex3d(-BASE_SIZE + MAP_SIZE, -BASE_SIZE + MAP_SIZE, 0);
 
-			GL11.glTexCoord2f(maxTex, maxTex);
-			GL11.glVertex3d(-BASE_SIZE - MAP_SIZE, -BASE_SIZE - MAP_SIZE, 0);
+            GL11.glTexCoord2f(0, maxTex);
+            GL11.glVertex3d(-BASE_SIZE + MAP_SIZE, -BASE_SIZE - MAP_SIZE, 0);
 
-			GL11.glTexCoord2f(maxTex, 0);
-			GL11.glVertex3d(-BASE_SIZE - MAP_SIZE, -BASE_SIZE + MAP_SIZE, 0);
-			GL11.glEnd();
-		}
+            GL11.glTexCoord2f(maxTex, maxTex);
+            GL11.glVertex3d(-BASE_SIZE - MAP_SIZE, -BASE_SIZE - MAP_SIZE, 0);
 
-		private void bindMapTexture(TextureManager manager) {
-			if (mapTextureLocation == null) {
-				mapTextureData = new DynamicTexture(64, 64);
-				mapTextureLocation = manager.getDynamicTextureLocation("selection_", mapTextureData);
-			}
+            GL11.glTexCoord2f(maxTex, 0);
+            GL11.glVertex3d(-BASE_SIZE - MAP_SIZE, -BASE_SIZE + MAP_SIZE, 0);
+            GL11.glEnd();
+        }
 
-			manager.bindTexture(mapTextureLocation);
-		}
-	}
+        private void bindMapTexture(TextureManager manager) {
+            if (mapTextureLocation == null) {
+                mapTextureData = new DynamicTexture(64, 64);
+                mapTextureLocation = manager.getDynamicTextureLocation("selection_", mapTextureData);
+            }
 
-	@Override
-	public void doRender(Entity entity, double x, double y, double z, float scale, float partialTickTime) {
-		EntityCartographer cartographer = (EntityCartographer)entity;
-		GL11.glPushMatrix();
-		GL11.glTranslated(x, y, z);
-		GL11.glColor3f(1, 1, 1);
-		bindTexture(TEXTURE);
-		MODEL.renderBase(cartographer.eyeYaw);
+            manager.bindTexture(mapTextureLocation);
+        }
+    }
 
-		bindTexture(TextureMap.locationItemsTexture);
-		MODEL.renderEye(cartographer.eyeYaw, cartographer.eyePitch);
-		cartographer.updateEye();
+    @Override
+    public void doRender(Entity entity, double x, double y, double z, float scale, float partialTickTime) {
+        EntityCartographer cartographer = (EntityCartographer) entity;
+        GL11.glPushMatrix();
+        GL11.glTranslated(x, y, z);
+        GL11.glColor3f(1, 1, 1);
+        bindTexture(TEXTURE);
+        MODEL.renderBase(cartographer.eyeYaw);
 
-		GL11.glPopMatrix();
-	}
+        bindTexture(TextureMap.locationItemsTexture);
+        MODEL.renderEye(cartographer.eyeYaw, cartographer.eyePitch);
+        cartographer.updateEye();
 
-	@Override
-	protected ResourceLocation getEntityTexture(Entity entity) {
-		return TEXTURE;
-	}
+        GL11.glPopMatrix();
+    }
+
+    @Override
+    protected ResourceLocation getEntityTexture(Entity entity) {
+        return TEXTURE;
+    }
 }

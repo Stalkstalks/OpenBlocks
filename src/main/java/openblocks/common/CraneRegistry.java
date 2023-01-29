@@ -1,86 +1,91 @@
 package openblocks.common;
 
-import com.google.common.collect.MapMaker;
 import java.util.Map;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+
 import openblocks.common.entity.EntityMagnet;
 
+import com.google.common.collect.MapMaker;
+
 public class CraneRegistry {
-	private static final double MIN_LENGTH = 0.25;
-	private static final double MAX_LENGTH = 10;
-	private static final double LENGTH_DELTA = 0.1;
 
-	public static class Data {
-		public boolean isDetected;
-		public boolean isExtending;
-		public double length = MIN_LENGTH;
+    private static final double MIN_LENGTH = 0.25;
+    private static final double MAX_LENGTH = 10;
+    private static final double LENGTH_DELTA = 0.1;
 
-		public float prevYaw;
-		public double prevPosX;
-		public double prevPosY;
-		public double prevPosZ;
+    public static class Data {
 
-		private Data(EntityPlayer player) {
-			prevYaw = player.rotationYaw;
-			prevPosX = player.posX;
-			prevPosY = player.posY;
-			prevPosZ = player.posZ;
-		}
+        public boolean isDetected;
+        public boolean isExtending;
+        public double length = MIN_LENGTH;
 
-		public void updateLength() {
-			if (isExtending && length < MAX_LENGTH) length += LENGTH_DELTA;
-			else if (!isExtending && length > MIN_LENGTH) length -= LENGTH_DELTA;
-		}
-	}
+        public float prevYaw;
+        public double prevPosX;
+        public double prevPosY;
+        public double prevPosZ;
 
-	private Map<EntityPlayer, Data> itemData = new MapMaker().weakKeys().makeMap();
-	private Map<EntityPlayer, EntityMagnet> playersMagnets = new MapMaker().weakKeys().weakValues().makeMap();
+        private Data(EntityPlayer player) {
+            prevYaw = player.rotationYaw;
+            prevPosX = player.posX;
+            prevPosY = player.posY;
+            prevPosZ = player.posZ;
+        }
 
-	public void ensureMagnetExists(EntityPlayer player) {
-		EntityMagnet magnet = playersMagnets.get(player);
+        public void updateLength() {
+            if (isExtending && length < MAX_LENGTH) length += LENGTH_DELTA;
+            else if (!isExtending && length > MIN_LENGTH) length -= LENGTH_DELTA;
+        }
+    }
 
-		if (magnet == null || magnet.isDead) {
-			createMagnetForPlayer(player);
-		} else if (!magnet.isValid()) {
-			magnet.setDead();
-			createMagnetForPlayer(player);
-		}
-	}
+    private Map<EntityPlayer, Data> itemData = new MapMaker().weakKeys().makeMap();
+    private Map<EntityPlayer, EntityMagnet> playersMagnets = new MapMaker().weakKeys().weakValues().makeMap();
 
-	private static EntityMagnet createMagnetForPlayer(EntityPlayer player) {
-		EntityMagnet result = new EntityMagnet.PlayerBound(player.worldObj, player);
-		player.worldObj.spawnEntityInWorld(result);
-		return result;
-	}
+    public void ensureMagnetExists(EntityPlayer player) {
+        EntityMagnet magnet = playersMagnets.get(player);
 
-	public EntityMagnet getMagnetForPlayer(EntityPlayer player) {
-		return playersMagnets.get(player);
-	}
+        if (magnet == null || magnet.isDead) {
+            createMagnetForPlayer(player);
+        } else if (!magnet.isValid()) {
+            magnet.setDead();
+            createMagnetForPlayer(player);
+        }
+    }
 
-	public void bindMagnetToPlayer(Entity owner, EntityMagnet magnet) {
-		if (owner instanceof EntityPlayer) playersMagnets.put((EntityPlayer)owner, magnet);
-	}
+    private static EntityMagnet createMagnetForPlayer(EntityPlayer player) {
+        EntityMagnet result = new EntityMagnet.PlayerBound(player.worldObj, player);
+        player.worldObj.spawnEntityInWorld(result);
+        return result;
+    }
 
-	public static final double ARM_RADIUS = 2.0;
+    public EntityMagnet getMagnetForPlayer(EntityPlayer player) {
+        return playersMagnets.get(player);
+    }
 
-	public final static CraneRegistry instance = new CraneRegistry();
+    public void bindMagnetToPlayer(Entity owner, EntityMagnet magnet) {
+        if (owner instanceof EntityPlayer) playersMagnets.put((EntityPlayer) owner, magnet);
+    }
 
-	private CraneRegistry() {}
+    public static final double ARM_RADIUS = 2.0;
 
-	public Data getData(EntityPlayer player, boolean canCreate) {
-		Data result = itemData.get(player);
+    public final static CraneRegistry instance = new CraneRegistry();
 
-		if (result == null && canCreate) {
-			result = new Data(player);
-			itemData.put(player, result);
-		}
+    private CraneRegistry() {}
 
-		return result;
-	}
+    public Data getData(EntityPlayer player, boolean canCreate) {
+        Data result = itemData.get(player);
 
-	public double getCraneMagnetDistance(EntityPlayer player) {
-		Data data = getData(player, false);
-		return data != null? data.length : MIN_LENGTH;
-	}
+        if (result == null && canCreate) {
+            result = new Data(player);
+            itemData.put(player, result);
+        }
+
+        return result;
+    }
+
+    public double getCraneMagnetDistance(EntityPlayer player) {
+        Data data = getData(player, false);
+        return data != null ? data.length : MIN_LENGTH;
+    }
 }
