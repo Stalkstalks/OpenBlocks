@@ -37,7 +37,7 @@ public class KeyInputHandler {
         if (Config.hanggliderEnableThermal) {
             varioSwitchBinding = new KeyBinding(
                     "openblocks.keybind.vario_switch",
-                    Keyboard.KEY_V,
+                    Keyboard.KEY_NONE,
                     "openblocks.keybind.category");
             varioVolUpBinding = new KeyBinding(
                     "openblocks.keybind.vario_vol_up",
