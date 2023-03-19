@@ -5,6 +5,8 @@ import java.lang.reflect.Method;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
+import openblocks.common.item.MetasGeneric;
+import openblocks.common.item.MetasGenericUnstackable;
 import openmods.Log;
 import codechicken.nei.api.IConfigureNEI;
 
@@ -25,6 +27,14 @@ public class NEIOpenBlocksConfig implements IConfigureNEI {
 
         if (OpenBlocks.Items.heightMap != null) {
             API$hideItem(new ItemStack(OpenBlocks.Items.heightMap, 1, OreDictionary.WILDCARD_VALUE));
+        }
+
+        if (!MetasGeneric.subItemEnabled()) {
+            API$hideItem(new ItemStack(OpenBlocks.Items.generic, 1, OreDictionary.WILDCARD_VALUE));
+        }
+
+        if (!MetasGenericUnstackable.subItemEnabled()) {
+            API$hideItem(new ItemStack(OpenBlocks.Items.genericUnstackable, 1, OreDictionary.WILDCARD_VALUE));
         }
 
         Log.info("OpenBlocks NEI Integration loaded successfully");
