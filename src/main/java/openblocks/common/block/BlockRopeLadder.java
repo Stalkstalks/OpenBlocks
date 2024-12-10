@@ -23,7 +23,6 @@ import openmods.geometry.BlockSpaceTransform;
 import openmods.geometry.Orientation;
 import openmods.infobook.BookDocumentation;
 import openmods.utils.BlockManipulator;
-import openmods.utils.BlockUtils;
 
 @BookDocumentation
 public class BlockRopeLadder extends OpenBlock {
@@ -61,18 +60,7 @@ public class BlockRopeLadder extends OpenBlock {
 
     @Override
     @SuppressWarnings("rawtypes")
-    public void addCollisionBoxesToList(World world, int x, int y, int z, AxisAlignedBB bb, List list, Entity entity) {
-        if (entity instanceof EntityLivingBase) {
-            int meta = world.getBlockMetadata(x, y, z);
-            Orientation orientation = getOrientation(meta);
-            ForgeDirection playerRotation = BlockUtils.get2dOrientation((EntityLivingBase) entity);
-            if (orientation.north() == playerRotation) {
-                super.addCollisionBoxesToList(world, x, y, z, bb, list, entity);
-            }
-        } else {
-            super.addCollisionBoxesToList(world, x, y, z, bb, list, entity);
-        }
-    }
+    public void addCollisionBoxesToList(World world, int x, int y, int z, AxisAlignedBB bb, List list, Entity entity) {}
 
     @Override
     public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z) {

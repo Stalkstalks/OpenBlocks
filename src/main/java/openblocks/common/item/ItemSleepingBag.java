@@ -1,12 +1,9 @@
 package openblocks.common.item;
 
-import java.util.List;
-
 import net.minecraft.block.Block;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayer.EnumStatus;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -25,7 +22,9 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.event.entity.player.PlayerSleepInBedEvent;
+import net.minecraftforge.event.entity.player.PlayerWakeUpEvent;
 
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import openblocks.OpenBlocks;
@@ -77,9 +76,11 @@ public class ItemSleepingBag extends ItemArmor {
         if (!world.isRemote) {
             ItemStack currentArmor = getChestpieceSlot(player);
             if (currentArmor != null) currentArmor = currentArmor.copy();
+
             final ItemStack sleepingBagCopy = sleepingBagStack.copy();
 
             NBTTagCompound tag = ItemUtils.getItemTag(sleepingBagCopy);
+            tag.removeTag(TAG_SLEEPING);
             tag.setInteger(TAG_SLOT, player.inventory.currentItem);
 
             setChestpieceSlot(player, sleepingBagCopy);
@@ -94,6 +95,23 @@ public class ItemSleepingBag extends ItemArmor {
         return armorType == ARMOR_CHESTPIECE_TYPE;
     }
 
+    @SubscribeEvent
+    public void onPlayerWakeUp(final PlayerWakeUpEvent event) {
+        EntityPlayer player = event.entityPlayer;
+
+        ItemStack currentArmor = getChestpieceSlot(player);
+
+        if (isSleepingBag(currentArmor)) {
+            NBTTagCompound tag = ItemUtils.getItemTag(currentArmor);
+            if (tag.getBoolean(TAG_SLEEPING)) {
+                restoreOriginalSpawn(player, tag);
+                restoreOriginalPosition(player, tag);
+                tag.removeTag(TAG_SLEEPING);
+            }
+            getOutOfSleepingBag(player);
+        }
+    }
+
     @Override
     public void onArmorTick(World world, EntityPlayer player, ItemStack itemStack) {
         if (!(player instanceof EntityPlayerMP)) return;
@@ -105,10 +123,10 @@ public class ItemSleepingBag extends ItemArmor {
             getOutOfSleepingBag(player);
         } else if (tag.getBoolean(TAG_SLEEPING)) {
             // player just woke up
-            restoreOriginalSpawn(player, tag);
-            restoreOriginalPosition(player, tag);
-            tag.removeTag(TAG_SLEEPING);
-            getOutOfSleepingBag(player);
+            // restoreOriginalSpawn(player, tag);
+            // restoreOriginalPosition(player, tag);
+            // tag.removeTag(TAG_SLEEPING);
+            // getOutOfSleepingBag(player);
         } else {
             // player just put in on
             final int posX = MathHelper.floor_double(player.posX);
@@ -129,9 +147,9 @@ public class ItemSleepingBag extends ItemArmor {
 
         IS_SLEEPING.set(player, true);
         SLEEPING_TIMER.set(player, 0);
-        player.playerLocation = new ChunkCoordinates(x, y, z);
+        // player.playerLocation = new ChunkCoordinates(x, y, z);
 
-        player.motionX = player.motionZ = player.motionY = 0.0D;
+        // player.motionX = player.motionZ = player.motionY = 0.0D;
         world.updateAllPlayersSleepingFlag();
 
         S0APacketUseBed sleepPacket = new S0APacketUseBed(player, x, y, z);
@@ -145,12 +163,12 @@ public class ItemSleepingBag extends ItemArmor {
         if (event.result != null) return event.result;
 
         if (!world.provider.isSurfaceWorld()) return EntityPlayer.EnumStatus.NOT_POSSIBLE_HERE;
-        if (world.isDaytime()) return EntityPlayer.EnumStatus.NOT_POSSIBLE_NOW;
+        // if (world.isDaytime()) return EntityPlayer.EnumStatus.NOT_POSSIBLE_NOW;
 
-        List<?> list = world.getEntitiesWithinAABB(
-                EntityMob.class,
-                AxisAlignedBB.getBoundingBox(x - 8, y - 5, z - 8, x + 8, y + 5, z + 8));
-        if (!list.isEmpty()) return EntityPlayer.EnumStatus.NOT_SAFE;
+        // List<?> list = world.getEntitiesWithinAABB(
+        // EntityMob.class,
+        // AxisAlignedBB.getBoundingBox(x - 8, y - 5, z - 8, x + 8, y + 5, z + 8));
+        // if (!list.isEmpty()) return EntityPlayer.EnumStatus.NOT_SAFE;
 
         return EntityPlayer.EnumStatus.OK;
     }
@@ -158,7 +176,7 @@ public class ItemSleepingBag extends ItemArmor {
     private static boolean canPlayerSleep(EntityPlayer player, World world, int x, int y, int z) {
         if (player.isPlayerSleeping() || !player.isEntityAlive()) return false;
 
-        if (!isNotSuffocating(world, x, y, z) || !isSolidEnough(world, x, y - 1, z)) {
+        if (!isNotSuffocating(world, x, y, z) /* !isSolidEnough(world, x, y - 1, z) */) {
             player.addChatComponentMessage(new ChatComponentTranslation("openblocks.misc.oh_no_ground"));
             return false;
         }
